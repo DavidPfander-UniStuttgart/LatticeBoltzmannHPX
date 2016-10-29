@@ -8,6 +8,8 @@
 #include <hpx/hpx_init.hpp>
 #include <hpx/include/iostreams.hpp>
 
+#include "grid.hpp"
+
 //#include <hpx/include/actions.hpp>
 //#include <hpx/include/async.hpp>
 //#include <hpx/include/util.hpp>
@@ -23,6 +25,7 @@ int hpx_main(boost::program_options::variables_map& vm) {
 
     // extract command line argument
 //    N = vm["n-value"].as<std::uint64_t>();
+    std::string grid_file_name = vm["grid-file"].as<std::string>();
 
     is_root_node = hpx::find_here() == hpx::find_root_locality();
 
@@ -34,12 +37,17 @@ int hpx_main(boost::program_options::variables_map& vm) {
         return hpx::finalize();
     }
 
+    lattice::grid my_grid = lattice::grid::from_file(grid_file_name);
+
     return hpx::finalize(); // Handles HPX shutdown
 }
 
 int main(int argc, char* argv[]) {
 
-    desc_commandline.add_options()("help", "display help");
+    desc_commandline.add_options()("help", "display help")(
+            "grid-file",
+            boost::program_options::value<std::string>()->default_value(""),
+            "input file in csv format, describes grid with sources and drains and border cells");
 
 // Initialize and run HPX
     int return_value = hpx::init(desc_commandline, argc, argv);
