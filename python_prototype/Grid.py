@@ -113,12 +113,12 @@ class Grid:
         return grid
     
     def setupAllNeighbors(self, grid):
-        print self.gridX
-        print self.gridY
+        # print self.gridX
+        # print self.gridY
         #setup neighbors
         for y in xrange(0, self.gridY):
             for x in xrange(0, self.gridX):
-                print x, y
+                # print x, y
                 neighbors = [None] * Direction.DIRS
                 curDir = 0
                 for yy in xrange(y - 1, y + 2, 1):
@@ -178,8 +178,8 @@ class Grid:
             for x in xrange(0, self.gridX):
                 if isinstance(self.gridArray[x][y], WaterCell):
                     totalMassAfter += self.bufferArray[x][y].getMassDensity()
-        print "totalMassBefore:", totalMassBefore
-        print "totalMassAfter:", totalMassAfter        
+        # print "totalMassBefore:", totalMassBefore
+        # print "totalMassAfter:", totalMassAfter        
        
     def regenerateNeighbors(self, array, xNew, yNew):
         #setup neighbors
