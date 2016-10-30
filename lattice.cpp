@@ -8,7 +8,7 @@
 #include <hpx/hpx_init.hpp>
 #include <hpx/include/iostreams.hpp>
 
-#include "grid.hpp"
+#include "grid2d.hpp"
 
 //#include <hpx/include/actions.hpp>
 //#include <hpx/include/async.hpp>
@@ -37,7 +37,7 @@ int hpx_main(boost::program_options::variables_map& vm) {
         return hpx::finalize();
     }
 
-    lattice::grid my_grid = lattice::grid::from_file(grid_file_name);
+    lattice::grid2d my_grid = lattice::grid2d::from_file(grid_file_name);
 
     return hpx::finalize(); // Handles HPX shutdown
 }
