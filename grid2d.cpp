@@ -39,7 +39,7 @@ grid2d grid2d::from_file(std::string file_name) {
     size_t row = 0;
     size_t col = 0;
     for (const auto &t : tok) {
-        std::cout << "token: \"" << t << "\"" << std::endl;
+//        std::cout << "token: \"" << t << "\"" << std::endl;
 
         std::string token = t;
         if (state == STATE::XDIM) {
@@ -94,14 +94,61 @@ grid2d grid2d::from_file(std::string file_name) {
     return grid2d(x_size, y_size, cells);
 }
 
-grid2d::grid2d(size_t x_size, size_t y_size,
-        std::vector<lattice::CELL_TYPES> &cells) :
+void grid2d::serialize_as_csv(const std::string &file_name) {
+    std::ofstream myfile;
+    myfile.open(file_name);
+    const std::string sep(",");
+    myfile << "x" << sep << "y" << sep << "z (dummy)" << sep << "value" << std::endl;
+    for (size_t x = -1; x < x_size + 1; x++) {
+        for (size_t y = -1; y < y_size + 1; y++) {
+            if (x < 0 || x >= x_size || y < 0 || y >= y_size) {
+                if (cells[get_cell_index(x, y)] != CELL_TYPES::BORDER) {
+                    myfile << x << sep << y << sep << 0.0 << sep << get_mass_density(x, y) << std::endl;
+                } else {
+                    myfile << x << sep << y << sep << 0.0 << sep << 2.0 << std::endl;
+                }
+            } else {
+                myfile << x << sep << y << sep << 0.0 << sep << get_mass_density(x, y) << std::endl;
+            }
+        }
+    }
+    myfile.close();
+}
+
+size_t grid2d::get_pop_index(size_t x, size_t y) {
+    return (x + 1) * (y_size + 1) + (y + 1);
+}
+
+size_t grid2d::get_cell_index(size_t x, size_t y) {
+    return x * y_size + y;
+}
+
+grid2d::grid2d(size_t x_size, size_t y_size, std::vector<lattice::CELL_TYPES> &cells) :
         x_size(x_size), y_size(y_size), cells(cells) {
-    for (std::vector<double> &dir : populations) {
-        dir.resize((x_size + 1) * (y_size + 1));
+    populations = std::make_unique<std::array<std::vector<double>, DIRECTIONS_2D>>();
+    new_populations = std::make_unique<std::array<std::vector<double>, DIRECTIONS_2D>>();
+    for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
+        (*populations)[dir].resize((x_size + 1) * (y_size + 1));
+    }
+    for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
+        (*new_populations)[dir].resize((x_size + 1) * (y_size + 1));
     }
 
-    collide();
+    for (size_t x = 1; x < x_size + 1; x++) {
+        for (size_t y = 1; y < y_size + 1; y++) {
+//            initialize_cell(x, y);
+            for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
+                if (x == 23 && y == 23) {
+                    (*new_populations)[dir][get_pop_index(x, y)] = 1.0;
+                } else {
+                    (*new_populations)[dir][get_pop_index(x, y)] = 0.0;
+                }
+            }
+        }
+    }
+
+    //TODO: have to do meaningful initialization
+//    collide();
 //    double massDensity = 1.0;
 //    double momentumDensity[2] = { 0.0, 0.0 };
 //    population = self.calculateEquilibiumDistribution(massDensity,
@@ -117,38 +164,38 @@ grid2d::grid2d(size_t x_size, size_t y_size,
 //}
 
 void grid2d::step() {
-    collide();
-    source();
-    drain();
+    // switch arrays
+    std::swap(populations, new_populations);
+//
+//    collide();
+//    source();
+//    drain();
     stream();
+    boundary();
 }
 
-void grid2d::get_momentum_density(size_t flat_cell_index,
-        double (&momentum_density)[2]) {
+void grid2d::get_momentum_density(size_t x, size_t y, double (&momentum_density)[2]) {
     momentum_density[0] = 0.0;
     momentum_density[1] = 0.0;
     for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
-        momentum_density[0] += populations[dir][flat_cell_index]
-                * grid2d::SPEEDS_X[dir];
+        momentum_density[0] += (*populations)[dir][get_pop_index(x, y)] * grid2d::SPEEDS_X[dir];
     }
     for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
-        momentum_density[1] += populations[dir][flat_cell_index]
-                * grid2d::SPEEDS_Y[dir];
+        momentum_density[1] += (*populations)[dir][get_pop_index(x, y)] * grid2d::SPEEDS_Y[dir];
     }
 }
 
-double grid2d::get_mass_density(size_t flat_cell_index) {
+double grid2d::get_mass_density(size_t x, size_t y) {
     double mass_density = 0.0;
     for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
-        mass_density += populations[dir][flat_cell_index];
+        mass_density += (*populations)[dir][get_pop_index(x, y)];
     }
     return mass_density;
 }
 
-void grid2d::calculate_equilibrium(const double mass_density,
-        const double (&momentum_density)[2], double (&equilibrium)[9]) {
-    double u[2] = { momentum_density[0] / mass_density, momentum_density[1]
-            / mass_density };
+void grid2d::calculate_equilibrium(const double mass_density, const double (&momentum_density)[2],
+        double (&equilibrium)[9]) {
+    double u[2] = { momentum_density[0] / mass_density, momentum_density[1] / mass_density };
     double uu = u[0] * u[0] + u[1] * u[1];
     double c2 = C * C;
     double c4 = c2 * c2;
@@ -161,57 +208,58 @@ void grid2d::calculate_equilibrium(const double mass_density,
         if (dir == 4) { // == center cell
             equilibrium[dir] = (4.0 / 9.0) * mass_density * (1.0 + forth);
         } else if (dir == 1 || dir == 3 or dir == 5 || dir == 7) { // == NSWE
-            equilibrium[dir] = (1.0 / 9.0) * mass_density
-                    * (1.0 + second + third + forth);
+            equilibrium[dir] = (1.0 / 9.0) * mass_density * (1.0 + second + third + forth);
         } else { // other directions
-            equilibrium[dir] = (1.0 / 36.0) * mass_density
-                    * (1.0 + second + third + forth);
+            equilibrium[dir] = (1.0 / 36.0) * mass_density * (1.0 + second + third + forth);
         }
     }
 }
 
 void grid2d::collide() {
-    for (size_t flat_cell_index = 0; flat_cell_index < x_size * y_size;
-            flat_cell_index++) {
-        double mass_density = get_mass_density(flat_cell_index);
-        double momentum_density[2];
-        get_momentum_density(flat_cell_index, momentum_density);
-        double equilibrium[9];
-        calculate_equilibrium(mass_density, momentum_density, equilibrium);
+    for (size_t x = 0; x < x_size; x++) {
+        for (size_t y = 0; y < y_size; y++) {
+            double mass_density = get_mass_density(x, y);
+            double momentum_density[2];
+            get_momentum_density(x, y, momentum_density);
+            double equilibrium[9];
+            calculate_equilibrium(mass_density, momentum_density, equilibrium);
 
-        for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
-            populations[dir][flat_cell_index] = (1 - OMEGA)
-                    * populations[dir][flat_cell_index]
-                    + OMEGA * equilibrium[dir];
+            for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
+                (*populations)[dir][get_pop_index(x, y)] = (1 - OMEGA) * (*populations)[dir][get_pop_index(x, y)]
+                        + OMEGA * equilibrium[dir];
+            }
+            //TODO: add correct() step?
         }
-        //TODO: add correct() step?
+    }
+}
+
+void grid2d::initialize_cell(size_t x, size_t y) {
+    for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
+        (*populations)[dir][get_pop_index(x, y)] = 1.0 / DIRECTIONS_2D;
     }
 }
 
 void grid2d::source() {
-    for (size_t x = 1; x < x_size * y_size + 1; x++) {
-        for (size_t y = 1; y < x_size * y_size + 1; y++) {
-            if (cells[x * (y_size + 1) + y] == CELL_TYPES::SOURCE) {
+    for (size_t x = 0; x < x_size; x++) {
+        for (size_t y = 0; y < y_size; y++) {
+            if (cells[get_cell_index(x, y)] == CELL_TYPES::SOURCE) {
 //TODO: port that piece of code?
 //                double momentum[9];
 //                velocity_to_momentum(v, 1.0, momentum);
 //                double equilibrium[9];
 //                calculate_equilibrium(1.0, momentum, equilibrium);
-                for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
-                    new_populations[dir][x * (y_size + 1) + y] = 1.0
-                            / DIRECTIONS_2D;
-                }
+                initialize_cell(x, y);
             }
         }
     }
 }
 
 void grid2d::drain() {
-    for (size_t x = 1; x < x_size * y_size + 1; x++) {
-        for (size_t y = 1; y < x_size * y_size + 1; y++) {
-            if (cells[x * (y_size + 1) + y] == CELL_TYPES::SOURCE) {
+    for (size_t x = 0; x < x_size; x++) {
+        for (size_t y = 0; y < y_size; y++) {
+            if (cells[get_cell_index(x, y)] == CELL_TYPES::SOURCE) {
                 for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
-                    new_populations[dir][x * (y_size + 1) + y] = 0.0;
+                    (*populations)[dir][get_pop_index(x, y)] = 0.0;
                 }
             }
         }
@@ -219,44 +267,57 @@ void grid2d::drain() {
 }
 
 void grid2d::boundary() {
-    for (size_t x = 1; x < x_size * y_size + 1; x++) {
-        for (size_t y = 1; y < x_size * y_size + 1; y++) {
-            if (cells[x * (y_size + 1) + y] == CELL_TYPES::BORDER) {
-                new_populations[0][x * (y_size + 1) + y] = populations[7][x * (y_size + 1) + y]; // NW
-                new_populations[1][x * (y_size + 1) + y] = populations[8][x * (y_size + 1) + y]; // N
-                new_populations[2][x * (y_size + 1) + y] = populations[9][x * (y_size + 1) + y]; // NE
-                new_populations[3][x * (y_size + 1) + y] = populations[5][x * (y_size + 1) + y]; // W
-                new_populations[4][x * (y_size + 1) + y] = populations[4][x * (y_size + 1) + y]; // C
-                new_populations[5][x * (y_size + 1) + y] = populations[3][x * (y_size + 1) + y]; // E
-                new_populations[6][x * (y_size + 1) + y] = populations[0][x * (y_size + 1) + y]; // SW
-                new_populations[7][x * (y_size + 1) + y] = populations[1][x * (y_size + 1) + y]; // S
-                new_populations[8][x * (y_size + 1) + y] = populations[2][x * (y_size + 1) + y]; // SE
+    for (size_t x = 0; x < x_size; x++) {
+        for (size_t y = 0; y < y_size; y++) {
+            if (cells[x * y_size + y] == CELL_TYPES::BORDER) {
+//                std::swap((*new_populations)[1][get_pop_index(x, y)], (*new_populations)[7][get_pop_index(x, y)]);
+//                std::swap((*new_populations)[3][get_pop_index(x, y)], (*new_populations)[5][get_pop_index(x, y)]);
+//
+//                std::swap((*new_populations)[0][get_pop_index(x, y)], (*new_populations)[6][get_pop_index(x, y)]);
+//                std::swap((*new_populations)[2][get_pop_index(x, y)], (*new_populations)[8][get_pop_index(x, y)]);
+
+                double tmp = (*new_populations)[7][get_pop_index(x, y)];
+                (*new_populations)[7][get_pop_index(x, y)] = (*new_populations)[1][get_pop_index(x, y)];
+                (*new_populations)[1][get_pop_index(x, y)] = tmp;
+
+                tmp = (*new_populations)[3][get_pop_index(x, y)];
+                (*new_populations)[3][get_pop_index(x, y)] = (*new_populations)[7][get_pop_index(x, y)];
+                (*new_populations)[7][get_pop_index(x, y)] = tmp;
+
+                tmp = (*new_populations)[0][get_pop_index(x, y)];
+                (*new_populations)[0][get_pop_index(x, y)] = (*new_populations)[6][get_pop_index(x, y)];
+                (*new_populations)[6][get_pop_index(x, y)] = tmp;
+
+                tmp = (*new_populations)[2][get_pop_index(x, y)];
+                (*new_populations)[2][get_pop_index(x, y)] = (*new_populations)[8][get_pop_index(x, y)];
+                (*new_populations)[8][get_pop_index(x, y)] = tmp;
+
+//                (*new_populations)[0][get_pop_index(x, y)] = (*new_populations)[6][get_pop_index(x, y)]; // NW
+//                (*new_populations)[1][get_pop_index(x, y)] = (*new_populations)[7][get_pop_index(x, y)]; // N
+//                (*new_populations)[2][get_pop_index(x, y)] = (*new_populations)[8][get_pop_index(x, y)]; // NE
+//                (*new_populations)[3][get_pop_index(x, y)] = (*new_populations)[5][get_pop_index(x, y)]; // W
+////                (*new_populations)[4][get_pop_index(x, y)] = (*new_populations)[4][get_pop_index(x, y)]; // C
+//                (*new_populations)[5][get_pop_index(x, y)] = (*new_populations)[3][get_pop_index(x, y)]; // E
+//                (*new_populations)[6][get_pop_index(x, y)] = (*new_populations)[0][get_pop_index(x, y)]; // SW
+//                (*new_populations)[7][get_pop_index(x, y)] = (*new_populations)[1][get_pop_index(x, y)]; // S
+//                (*new_populations)[8][get_pop_index(x, y)] = (*new_populations)[2][get_pop_index(x, y)]; // SE
             }
         }
     }
 }
 
 void grid2d::stream() {
-    for (size_t x = 1; x < x_size * y_size + 1; x++) {
-        for (size_t y = 1; y < x_size * y_size + 1; y++) {
-            new_populations[0][(x + 1) * (y_size + 1) + (y - 1)] =
-                    populations[0][x * (y_size + 1) + y]; // NW
-            new_populations[1][(x + 1) * (y_size + 1) + y] = populations[1][x
-                    * (y_size + 1) + y]; // N
-            new_populations[2][(x + 1) * (y_size + 1) + (y + 1)] =
-                    populations[2][x * (y_size + 1) + y]; // NE
-            new_populations[3][x * (y_size + 1) + (y - 1)] = populations[3][x
-                    * (y_size + 1) + y]; // W
-            new_populations[4][x * (y_size + 1) + y] = populations[4][x
-                    * (y_size + 1) + y]; // C
-            new_populations[5][x * (y_size + 1) + (y + 1)] = populations[5][x
-                    * (y_size + 1) + y]; // E
-            new_populations[6][(x - 1) * (y_size + 1) + (y - 1)] =
-                    populations[6][x * (y_size + 1) + y]; // NW
-            new_populations[7][(x - 1) * (y_size + 1) + y] = populations[7][x
-                    * (y_size + 1) + y]; // S
-            new_populations[8][(x - 1) * (y_size + 1) + (y + 1)] =
-                    populations[8][x * (y_size + 1) + y]; // NE
+    for (size_t x = 0; x < x_size; x++) {
+        for (size_t y = 0; y < y_size; y++) {
+            (*new_populations)[0][get_pop_index(x + 1, y - 1)] = (*populations)[0][get_pop_index(x, y)]; // NW
+            (*new_populations)[1][get_pop_index(x + 1, y)] = (*populations)[1][get_pop_index(x, y)]; // N
+            (*new_populations)[2][get_pop_index(x + 1, y + 1)] = (*populations)[2][get_pop_index(x, y)]; // NE
+            (*new_populations)[3][get_pop_index(x, y - 1)] = (*populations)[3][get_pop_index(x, y)]; // W
+            (*new_populations)[4][get_pop_index(x, y)] = (*populations)[4][get_pop_index(x, y)]; // C
+            (*new_populations)[5][get_pop_index(x, y + 1)] = (*populations)[5][get_pop_index(x, y)]; // E
+            (*new_populations)[6][get_pop_index(x - 1, y - 1)] = (*populations)[6][get_pop_index(x, y)]; // NW
+            (*new_populations)[7][get_pop_index(x - 1, y)] = (*populations)[7][get_pop_index(x, y)]; // S
+            (*new_populations)[8][get_pop_index(x - 1, y + 1)] = (*populations)[8][get_pop_index(x, y)]; // NE
         }
     }
 }

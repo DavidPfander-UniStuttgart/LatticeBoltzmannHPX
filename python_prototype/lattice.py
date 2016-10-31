@@ -109,15 +109,15 @@ def runGame():
                 color = cell.getColor(renderMode)
                 pygame.draw.rect(screen, color, pygame.Rect(x * renderWidth, y * renderHeight, renderWidth, renderHeight))
                 
-                if isinstance(cell, WaterCell):
-                    speedScaling = 20
-                    speed = cell.getSpeed()
-                    posStart = [(x + 0.5) * renderWidth, (y + 0.5) * renderHeight]
-                    posEnd = [posStart[0] + speedScaling * speed[0], posStart[1] + speedScaling * speed[1]]
-                    color = tuple([255, 255, 255])
-                    pygame.draw.line(screen, color, posStart, posEnd)
-                    color = tuple([0, 0, 0])
-                    pygame.draw.rect(screen, color, pygame.Rect(posStart, (2, 2)))
+#                 if isinstance(cell, WaterCell):
+#                     speedScaling = 20
+#                     speed = cell.getSpeed()
+#                     posStart = [(x + 0.5) * renderWidth, (y + 0.5) * renderHeight]
+#                     posEnd = [posStart[0] + speedScaling * speed[0], posStart[1] + speedScaling * speed[1]]
+#                     color = tuple([255, 255, 255])
+#                     pygame.draw.line(screen, color, posStart, posEnd)
+#                     color = tuple([0, 0, 0])
+#                     pygame.draw.rect(screen, color, pygame.Rect(posStart, (2, 2)))
                 
 #         # draw rigid bodies
 #         for rigidBody in rigidBodyManager.rigidBodies:
