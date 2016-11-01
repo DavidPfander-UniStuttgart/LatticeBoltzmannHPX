@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (is_root_node) {
-
+        std::cout << "simulation finished" << std::endl;
     }
     return return_value;
 }

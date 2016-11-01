@@ -26,6 +26,8 @@ public:
 
     void serialize_as_csv(const std::string &file_name);
 
+    void print_grid();
+
 private:
 
     size_t x_size;
@@ -37,6 +39,12 @@ private:
     std::unique_ptr<std::array<std::vector<double>, DIRECTIONS_2D>> new_populations; //,.[DIRECTIONS_2D];
 
     grid2d(size_t x_size, size_t y_size, std::vector<lattice::CELL_TYPES> &cells);
+
+    lattice::CELL_TYPES &get_cell(size_t x, size_t y);
+
+    double &get_population(size_t x, size_t y, size_t dir);
+
+    double &get_new_population(size_t x, size_t y, size_t dir);
 
 //    void velocity_to_momentum(const double (&v)[9], const double mass_density, double (&momentum)[9]);
 
