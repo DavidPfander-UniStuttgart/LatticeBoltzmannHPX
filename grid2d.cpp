@@ -18,6 +18,8 @@ namespace lattice {
 
 const double grid2d::SPEEDS_X[DIRECTIONS_2D] = { -C, 0, C, -C, 0, C, -C, 0, C };
 const double grid2d::SPEEDS_Y[DIRECTIONS_2D] = { -C, -C, -C, 0, 0, 0, C, C, C };
+const double grid2d::weights[DIRECTIONS_2D] = { 1.0 / 36.0, 1.0 / 9.0, 1.0 / 36.0, 1.0 / 9.0, 4.0 / 9.0, 1.0 / 9.0, 1.0
+        / 36.0, 1.0 / 9.0, 1.0 / 36.0 };
 
 grid2d grid2d::from_file(std::string file_name) {
     std::stringstream ss;
@@ -145,10 +147,12 @@ grid2d::grid2d(size_t x_size, size_t y_size, std::vector<lattice::CELL_TYPES> &c
 //                }
 //            }
 
-            for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
-                get_population(x, y, dir) = 1.0 / static_cast<double>(DIRECTIONS_2D);
-                get_new_population(x, y, dir) = 1.0 / static_cast<double>(DIRECTIONS_2D);
-            }
+//            for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
+//                get_population(x, y, dir) = 1.0 / static_cast<double>(DIRECTIONS_2D);
+//                get_new_population(x, y, dir) = 1.0 / static_cast<double>(DIRECTIONS_2D);
+//            }
+            get_population(x, y, 4) = 0.5;
+            get_new_population(x, y, 4) = 0.5;
         }
     }
     cells.resize((x_size + 2) * (y_size + 2));
@@ -215,45 +219,69 @@ double grid2d::get_mass_density(size_t x, size_t y) {
     return mass_density;
 }
 
-void grid2d::calculate_equilibrium(const double mass_density, const double (&momentum_density)[2],
-        double (&equilibrium)[9]) {
-    double u[2] = { momentum_density[0] / mass_density, momentum_density[1] / mass_density };
-    double uu = u[0] * u[0] + u[1] * u[1];
-    double c2 = C * C;
-    double c4 = c2 * c2;
-    double forth = -1.0 * (3.0 * uu) / (2.0 * c2);
+//void grid2d::calculate_equilibrium(const double mass_density, const double (&momentum_density)[2],
+//        double (&equilibrium)[9]) {
+//    double u[2] = { momentum_density[0] / mass_density, momentum_density[1] / mass_density };
+//    double uu = u[0] * u[0] + u[1] * u[1];
+//    double c2 = C * C;
+//    double c4 = c2 * c2;
+//    double forth = -1.0 * (3.0 * uu) / (2.0 * c2);
+//
+//    for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
+//        double cu = SPEEDS_X[dir] * u[0] + SPEEDS_Y[dir] * u[1];
+//        double second = (3.0 * cu) / (c2);
+//        double third = (9.0 * cu * cu) / (2.0 * c4);
+//        if (dir == 4) { // == center cell
+//            equilibrium[dir] = (4.0 / 9.0) * mass_density * (1.0 + forth);
+//        } else if (dir == 1 || dir == 3 || dir == 5 || dir == 7) { // == NSWE
+//            equilibrium[dir] = (1.0 / 9.0) * mass_density * (1.0 + second + third + forth);
+//        } else { // other directions
+//            equilibrium[dir] = (1.0 / 36.0) * mass_density * (1.0 + second + third + forth);
+//        }
+//    }
+//}
 
-    for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
-        double cu = SPEEDS_X[dir] * u[0] + SPEEDS_Y[dir] * u[1];
-        double second = (3.0 * cu) / (c2);
-        double third = (9.0 * cu * cu) / (2.0 * c4);
-        if (dir == 4) { // == center cell
-            equilibrium[dir] = (4.0 / 9.0) * mass_density * (1.0 + forth);
-        } else if (dir == 1 || dir == 3 || dir == 5 || dir == 7) { // == NSWE
-            equilibrium[dir] = (1.0 / 9.0) * mass_density * (1.0 + second + third + forth);
-        } else { // other directions
-            equilibrium[dir] = (1.0 / 36.0) * mass_density * (1.0 + second + third + forth);
-        }
-    }
+double grid2d::calculate_equilibrium(const size_t dir, const double mass_density, const double (&u)[2]) {
+    double u2 = u[0] * u[0] + u[1] * u[1];
+    double vu = SPEEDS_X[dir] * u[0] + SPEEDS_Y[dir] * u[1];
+    return mass_density * weights[dir] * (1.0 + 3.0 * vu + 4.5 * vu * vu - 1.5 * u2);
 }
 
+//void grid2d::collide() {
+//    for (size_t x = 0; x < x_size; x++) {
+//        for (size_t y = 0; y < y_size; y++) {
+//            double mass_density = get_mass_density(x, y);
+////            if (mass_density > 0.0) {
+//            double momentum_density[2];
+//            get_momentum_density(x, y, momentum_density);
+//            double equilibrium[9];
+//            calculate_equilibrium(mass_density, momentum_density, equilibrium);
+//
+////                std::cout << "x: " << x << " y: " << y << "---------" << std::endl;
+//            for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
+////                    std::cout << "eq[" << dir << "]: " << equilibrium[dir] << std::endl;
+//                get_population(x, y, dir) = (1 - OMEGA) * get_population(x, y, dir) + OMEGA * equilibrium[dir];
+//            }
+//            //TODO: add correct() step?
+////            }
+//        }
+//    }
+//}
+
 void grid2d::collide() {
+
     for (size_t x = 0; x < x_size; x++) {
         for (size_t y = 0; y < y_size; y++) {
-            double mass_density = get_mass_density(x, y);
-            if (mass_density > 0.0) {
+            if (get_cell(x, y) == CELL_TYPES::WATER) {
+                double mass_density = get_mass_density(x, y);
                 double momentum_density[2];
                 get_momentum_density(x, y, momentum_density);
-                double equilibrium[9];
-                calculate_equilibrium(mass_density, momentum_density, equilibrium);
+                double u[2] = { momentum_density[0] / mass_density, momentum_density[1] / mass_density };
 
-//                std::cout << "x: " << x << " y: " << y << "---------" << std::endl;
                 for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
-//                    std::cout << "eq[" << dir << "]: " << equilibrium[dir] << std::endl;
-//                    get_population(x, y, dir) = (1 - OMEGA) * get_population(x, y, dir) + OMEGA * equilibrium[dir];
-                    get_population(x, y, dir) = get_population(x, y, dir) - (1.0/TAU) * (get_population(x, y, dir) - equilibrium[dir]);
+                    get_population(x, y, dir) = (1 - OMEGA) * get_population(x, y, dir)
+                            + OMEGA * calculate_equilibrium(dir, mass_density, u);
                 }
-                //TODO: add correct() step?
             }
         }
     }
@@ -274,7 +302,7 @@ void grid2d::source() {
 //                velocity_to_momentum(v, 1.0, momentum);
 //                double equilibrium[9];
 //                calculate_equilibrium(1.0, momentum, equilibrium);
-                initialize_cell(x, y, DIRECTIONS_2D);
+                initialize_cell(x, y, 1.0);
             }
         }
     }

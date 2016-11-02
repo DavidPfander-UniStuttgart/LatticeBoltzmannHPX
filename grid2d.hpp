@@ -13,13 +13,13 @@ namespace lattice {
 class grid2d {
 public:
 
-//    static constexpr double OMEGA = 0.6;
-    static constexpr double TAU = 0.6;
+    static constexpr double OMEGA = 0.6;
     static constexpr double C = 1.0;
     static const double SPEEDS_X[DIRECTIONS_2D];
     static const double SPEEDS_Y[DIRECTIONS_2D];
     static constexpr double MAX_DIR_MASS = 1.5;
     static constexpr double MAX_TOTAL_MASS = 5.0;
+    static const double weights[DIRECTIONS_2D];
 
     static grid2d from_file(std::string file_name);
 
@@ -57,8 +57,7 @@ private:
 
     double get_mass_density(size_t x, size_t y);
 
-    void calculate_equilibrium(const double mass_density, const double (&momentum_density)[2],
-            double (&equilibrium)[9]);
+    double calculate_equilibrium(const size_t dir, const double mass_density, const double (&momentum_density)[2]);
 
     void initialize_cell(size_t x, size_t y, double factor);
 
