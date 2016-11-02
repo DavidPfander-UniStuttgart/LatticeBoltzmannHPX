@@ -83,7 +83,7 @@ void grid2d::serialize_as_csv(const std::string &file_name) {
     for (int64_t x = -1; x < static_cast<int64_t>(x_size + 1); x++) {
         for (int64_t y = -1; y < static_cast<int64_t>(y_size + 1); y++) {
             if (x >= 0 && x < static_cast<int64_t>(x_size) && y >= 0 && y < static_cast<int64_t>(y_size)) {
-                if (cells[get_cell_index(x, y)] != CELL_TYPES::BORDER) {
+                if (get_cell(x, y) != CELL_TYPES::BORDER) {
                     myfile << x << sep << y << sep << 0.0 << sep << get_mass_density(x, y) << std::endl;
                 } else {
                     myfile << x << sep << y << sep << 0.0 << sep << 2.0 << std::endl;
@@ -114,16 +114,15 @@ grid2d::grid2d(size_t x_size, size_t y_size, std::vector<lattice::CELL_TYPES> &c
     new_populations = std::make_unique<std::array<std::vector<double>, DIRECTIONS_2D>>();
     for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
         (*populations)[dir].resize((x_size + 1) * (y_size + 1));
-        std::fill((*populations)[dir].begin(), (*populations)[dir].end(), 0);
+        std::fill((*populations)[dir].begin(), (*populations)[dir].end(), 0.0);
     }
     for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
         (*new_populations)[dir].resize((x_size + 1) * (y_size + 1));
-        std::fill((*new_populations)[dir].begin(), (*new_populations)[dir].end(), 0);
+        std::fill((*new_populations)[dir].begin(), (*new_populations)[dir].end(), 0.0);
     }
 
-    for (size_t x = 1; x < x_size + 1; x++) {
-        for (size_t y = 1; y < y_size + 1; y++) {
-//            initialize_cell(x, y);
+    for (size_t x = 0; x < x_size; x++) {
+        for (size_t y = 0; y < y_size; y++) {
             for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
                 if (x == 10 && y == 5) {
                     get_population(x, y, dir) = 1.0;
@@ -153,24 +152,21 @@ grid2d::grid2d(size_t x_size, size_t y_size, std::vector<lattice::CELL_TYPES> &c
 //}
 
 void grid2d::step() {
-    print_grid();
-
-    for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
-        for (size_t x = 0; x < x_size; x++) {
-            for (size_t y = 0; y < y_size; y++) {
-                get_population(x, y, dir) = 0.0;
-            }
-        }
-    }
 
     // switch arrays
     std::swap(populations, new_populations);
-//
+
+    for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
+        std::fill((*new_populations)[dir].begin(), (*new_populations)[dir].end(), 0.0);
+    }
+
+    print_grid();
+
 //    collide();
 //    source();
 //    drain();
     stream();
-//    boundary();
+    boundary();
 }
 
 void grid2d::get_momentum_density(size_t x, size_t y, double (&momentum_density)[2]) {
@@ -206,7 +202,7 @@ void grid2d::calculate_equilibrium(const double mass_density, const double (&mom
         double third = (9.0 * cu * cu) / (2.0 * c4);
         if (dir == 4) { // == center cell
             equilibrium[dir] = (4.0 / 9.0) * mass_density * (1.0 + forth);
-        } else if (dir == 1 || dir == 3 or dir == 5 || dir == 7) { // == NSWE
+        } else if (dir == 1 || dir == 3 || dir == 5 || dir == 7) { // == NSWE
             equilibrium[dir] = (1.0 / 9.0) * mass_density * (1.0 + second + third + forth);
         } else { // other directions
             equilibrium[dir] = (1.0 / 36.0) * mass_density * (1.0 + second + third + forth);
@@ -283,63 +279,62 @@ void grid2d::boundary() {
                 } else if (cells[get_cell_index(x + 1, y)] == CELL_TYPES::BORDER
                         && cells[get_cell_index(x, y + 1)] != CELL_TYPES::BORDER) {
                     (*new_populations)[2][get_pop_index(x, y + 1)] += (*new_populations)[0][get_pop_index(x, y)];
+                } else if (cells[get_cell_index(x + 1, y)] != CELL_TYPES::BORDER
+                        && cells[get_cell_index(x, y + 1)] == CELL_TYPES::BORDER) {
+                    (*new_populations)[6][get_pop_index(x + 1, y)] += (*new_populations)[0][get_pop_index(x, y)];
+                } else if (cells[get_cell_index(x + 1, y)] != CELL_TYPES::BORDER
+                        && cells[get_cell_index(x, y + 1)] != CELL_TYPES::BORDER) {
+                    (*new_populations)[2][get_pop_index(x, y + 1)] += (*new_populations)[0][get_pop_index(x, y)] / 2.0;
+                    (*new_populations)[6][get_pop_index(x + 1, y)] += (*new_populations)[0][get_pop_index(x, y)] / 2.0;
                 }
-//                else if (cells[get_cell_index(x + 1, y)] != CELL_TYPES::BORDER
-//                        && cells[get_cell_index(x, y + 1)] == CELL_TYPES::BORDER) {
-//                    (*new_populations)[6][get_pop_index(x + 1, y)] += (*new_populations)[0][get_pop_index(x, y)];
-//                } else if (cells[get_cell_index(x + 1, y)] != CELL_TYPES::BORDER
-//                        && cells[get_cell_index(x, y + 1)] != CELL_TYPES::BORDER) {
-//                    (*new_populations)[2][get_pop_index(x, y + 1)] += (*new_populations)[0][get_pop_index(x, y)] / 2.0;
-//                    (*new_populations)[6][get_pop_index(x + 1, y)] += (*new_populations)[0][get_pop_index(x, y)] / 2.0;
-//                }
 
-//                // case dir 2
-//                if (cells[get_cell_index(x + 1, y)] == CELL_TYPES::BORDER
-//                        && cells[get_cell_index(x, y - 1)] == CELL_TYPES::BORDER) {
-//                    (*new_populations)[6][get_pop_index(x + 1, y - 1)] += (*new_populations)[2][get_pop_index(x, y)];
-//                } else if (cells[get_cell_index(x + 1, y)] == CELL_TYPES::BORDER
-//                        && cells[get_cell_index(x, y - 1)] != CELL_TYPES::BORDER) {
-//                    (*new_populations)[0][get_pop_index(x, y - 1)] += (*new_populations)[2][get_pop_index(x, y)];
-//                } else if (cells[get_cell_index(x + 1, y)] != CELL_TYPES::BORDER
-//                        && cells[get_cell_index(x, y - 1)] == CELL_TYPES::BORDER) {
-//                    (*new_populations)[8][get_pop_index(x + 1, y)] += (*new_populations)[2][get_pop_index(x, y)];
-//                } else if (cells[get_cell_index(x + 1, y)] != CELL_TYPES::BORDER
-//                        && cells[get_cell_index(x, y - 1)] != CELL_TYPES::BORDER) {
-//                    (*new_populations)[0][get_pop_index(x, y - 1)] += (*new_populations)[2][get_pop_index(x, y)] / 2.0;
-//                    (*new_populations)[8][get_pop_index(x + 1, y)] += (*new_populations)[2][get_pop_index(x, y)] / 2.0;
-//                }
-//
-//                // case dir 6
-//                if (cells[get_cell_index(x - 1, y)] == CELL_TYPES::BORDER
-//                        && cells[get_cell_index(x, y + 1)] == CELL_TYPES::BORDER) {
-//                    (*new_populations)[2][get_pop_index(x - 1, y + 1)] += (*new_populations)[6][get_pop_index(x, y)];
-//                } else if (cells[get_cell_index(x - 1, y)] == CELL_TYPES::BORDER
-//                        && cells[get_cell_index(x, y + 1)] != CELL_TYPES::BORDER) {
-//                    (*new_populations)[8][get_pop_index(x, y + 1)] += (*new_populations)[6][get_pop_index(x, y)];
-//                } else if (cells[get_cell_index(x - 1, y)] != CELL_TYPES::BORDER
-//                        && cells[get_cell_index(x, y + 1)] == CELL_TYPES::BORDER) {
-//                    (*new_populations)[0][get_pop_index(x - 1, y)] += (*new_populations)[6][get_pop_index(x, y)];
-//                } else if (cells[get_cell_index(x - 1, y)] != CELL_TYPES::BORDER
-//                        && cells[get_cell_index(x, y + 1)] != CELL_TYPES::BORDER) {
-//                    (*new_populations)[8][get_pop_index(x, y - 1)] += (*new_populations)[6][get_pop_index(x, y)] / 2.0;
-//                    (*new_populations)[0][get_pop_index(x + 1, y)] += (*new_populations)[6][get_pop_index(x, y)] / 2.0;
-//                }
-//
-//                // case dir 8
-//                if (cells[get_cell_index(x, y - 1)] == CELL_TYPES::BORDER
-//                        && cells[get_cell_index(x - 1, y)] == CELL_TYPES::BORDER) {
-//                    (*new_populations)[0][get_pop_index(x - 1, y + 1)] += (*new_populations)[8][get_pop_index(x, y)];
-//                } else if (cells[get_cell_index(x, y - 1)] == CELL_TYPES::BORDER
-//                        && cells[get_cell_index(x - 1, y)] != CELL_TYPES::BORDER) {
-//                    (*new_populations)[2][get_pop_index(x - 1, y)] += (*new_populations)[8][get_pop_index(x, y)];
-//                } else if (cells[get_cell_index(x, y - 1)] != CELL_TYPES::BORDER
-//                        && cells[get_cell_index(x - 1, y)] == CELL_TYPES::BORDER) {
-//                    (*new_populations)[0][get_pop_index(x, y - 1)] += (*new_populations)[8][get_pop_index(x, y)];
-//                } else if (cells[get_cell_index(x, y - 1)] != CELL_TYPES::BORDER
-//                        && cells[get_cell_index(x - 1, y)] != CELL_TYPES::BORDER) {
-//                    (*new_populations)[8][get_pop_index(x - 1, y)] += (*new_populations)[8][get_pop_index(x, y)] / 2.0;
-//                    (*new_populations)[0][get_pop_index(x, y - 1)] += (*new_populations)[8][get_pop_index(x, y)] / 2.0;
-//                }
+                // case dir 2
+                if (cells[get_cell_index(x + 1, y)] == CELL_TYPES::BORDER
+                        && cells[get_cell_index(x, y - 1)] == CELL_TYPES::BORDER) {
+                    (*new_populations)[6][get_pop_index(x + 1, y - 1)] += (*new_populations)[2][get_pop_index(x, y)];
+                } else if (cells[get_cell_index(x + 1, y)] == CELL_TYPES::BORDER
+                        && cells[get_cell_index(x, y - 1)] != CELL_TYPES::BORDER) {
+                    (*new_populations)[0][get_pop_index(x, y - 1)] += (*new_populations)[2][get_pop_index(x, y)];
+                } else if (cells[get_cell_index(x + 1, y)] != CELL_TYPES::BORDER
+                        && cells[get_cell_index(x, y - 1)] == CELL_TYPES::BORDER) {
+                    (*new_populations)[8][get_pop_index(x + 1, y)] += (*new_populations)[2][get_pop_index(x, y)];
+                } else if (cells[get_cell_index(x + 1, y)] != CELL_TYPES::BORDER
+                        && cells[get_cell_index(x, y - 1)] != CELL_TYPES::BORDER) {
+                    (*new_populations)[0][get_pop_index(x, y - 1)] += (*new_populations)[2][get_pop_index(x, y)] / 2.0;
+                    (*new_populations)[8][get_pop_index(x + 1, y)] += (*new_populations)[2][get_pop_index(x, y)] / 2.0;
+                }
+
+                // case dir 6
+                if (cells[get_cell_index(x - 1, y)] == CELL_TYPES::BORDER
+                        && cells[get_cell_index(x, y + 1)] == CELL_TYPES::BORDER) {
+                    (*new_populations)[2][get_pop_index(x - 1, y + 1)] += (*new_populations)[6][get_pop_index(x, y)];
+                } else if (cells[get_cell_index(x - 1, y)] == CELL_TYPES::BORDER
+                        && cells[get_cell_index(x, y + 1)] != CELL_TYPES::BORDER) {
+                    (*new_populations)[8][get_pop_index(x, y + 1)] += (*new_populations)[6][get_pop_index(x, y)];
+                } else if (cells[get_cell_index(x - 1, y)] != CELL_TYPES::BORDER
+                        && cells[get_cell_index(x, y + 1)] == CELL_TYPES::BORDER) {
+                    (*new_populations)[0][get_pop_index(x - 1, y)] += (*new_populations)[6][get_pop_index(x, y)];
+                } else if (cells[get_cell_index(x - 1, y)] != CELL_TYPES::BORDER
+                        && cells[get_cell_index(x, y + 1)] != CELL_TYPES::BORDER) {
+                    (*new_populations)[8][get_pop_index(x, y - 1)] += (*new_populations)[6][get_pop_index(x, y)] / 2.0;
+                    (*new_populations)[0][get_pop_index(x + 1, y)] += (*new_populations)[6][get_pop_index(x, y)] / 2.0;
+                }
+
+                // case dir 8
+                if (cells[get_cell_index(x, y - 1)] == CELL_TYPES::BORDER
+                        && cells[get_cell_index(x - 1, y)] == CELL_TYPES::BORDER) {
+                    (*new_populations)[0][get_pop_index(x - 1, y + 1)] += (*new_populations)[8][get_pop_index(x, y)];
+                } else if (cells[get_cell_index(x, y - 1)] == CELL_TYPES::BORDER
+                        && cells[get_cell_index(x - 1, y)] != CELL_TYPES::BORDER) {
+                    (*new_populations)[2][get_pop_index(x - 1, y)] += (*new_populations)[8][get_pop_index(x, y)];
+                } else if (cells[get_cell_index(x, y - 1)] != CELL_TYPES::BORDER
+                        && cells[get_cell_index(x - 1, y)] == CELL_TYPES::BORDER) {
+                    (*new_populations)[0][get_pop_index(x, y - 1)] += (*new_populations)[8][get_pop_index(x, y)];
+                } else if (cells[get_cell_index(x, y - 1)] != CELL_TYPES::BORDER
+                        && cells[get_cell_index(x - 1, y)] != CELL_TYPES::BORDER) {
+                    (*new_populations)[8][get_pop_index(x - 1, y)] += (*new_populations)[8][get_pop_index(x, y)] / 2.0;
+                    (*new_populations)[0][get_pop_index(x, y - 1)] += (*new_populations)[8][get_pop_index(x, y)] / 2.0;
+                }
 
                 for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
 //                    (*new_populations)[dir][get_pop_index(x, y)] = 0.0;
@@ -359,7 +354,7 @@ void grid2d::boundary() {
 void grid2d::stream() {
     for (size_t x = 0; x < x_size; x++) {
         for (size_t y = 0; y < y_size; y++) {
-            if (cells[get_cell_index(x, y)] != CELL_TYPES::BORDER) {
+            if (get_cell(x, y) != CELL_TYPES::BORDER) {
                 get_new_population(x + 1, y - 1, 0) = get_population(x, y, 0);
                 get_new_population(x + 1, y + 0, 1) = get_population(x, y, 1);
                 get_new_population(x + 1, y + 1, 2) = get_population(x, y, 2);
@@ -435,7 +430,7 @@ void grid2d::print_grid() {
             }
             double mass_density = 0.0;
             for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
-                mass_density += get_new_population(x, y, dir);
+                mass_density += get_population(x, y, dir);
             }
             if (mass_density > 0.0) {
                 std::cout << "+";
@@ -453,7 +448,7 @@ lattice::CELL_TYPES &grid2d::get_cell(size_t x, size_t y) {
 }
 
 double &grid2d::get_population(size_t x, size_t y, size_t dir) {
-    return (*new_populations)[dir][get_pop_index(x, y)];
+    return (*populations)[dir][get_pop_index(x, y)];
 }
 
 double &grid2d::get_new_population(size_t x, size_t y, size_t dir) {
