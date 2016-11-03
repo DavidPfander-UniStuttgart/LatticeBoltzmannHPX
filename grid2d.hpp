@@ -13,7 +13,7 @@ namespace lattice {
 class grid2d {
 public:
 
-    static constexpr double OMEGA = 0.6;
+    static constexpr double OMEGA = 0.9;
     static constexpr double C = 1.0;
     static const double SPEEDS_X[DIRECTIONS_2D];
     static const double SPEEDS_Y[DIRECTIONS_2D];
