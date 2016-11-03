@@ -21,7 +21,7 @@ public:
     static constexpr double MAX_TOTAL_MASS = 5.0;
     static const double weights[DIRECTIONS_2D];
 
-    static grid2d from_file(std::string file_name);
+    static grid2d from_file(std::string file_name, bool verbose);
 
     void step();
 
@@ -31,6 +31,8 @@ public:
 
 private:
 
+    bool verbose;
+
     size_t x_size;
     size_t y_size;
     std::vector<lattice::CELL_TYPES> cells;
@@ -39,7 +41,7 @@ private:
     std::unique_ptr<std::array<std::vector<double>, DIRECTIONS_2D>> populations; //[DIRECTIONS_2D];
     std::unique_ptr<std::array<std::vector<double>, DIRECTIONS_2D>> new_populations; //,.[DIRECTIONS_2D];
 
-    grid2d(size_t x_size, size_t y_size, std::vector<lattice::CELL_TYPES> &cells);
+    grid2d(size_t x_size, size_t y_size, std::vector<lattice::CELL_TYPES> &cells_unpadded, bool verbose);
 
     lattice::CELL_TYPES &get_cell(int64_t x, int64_t y);
 

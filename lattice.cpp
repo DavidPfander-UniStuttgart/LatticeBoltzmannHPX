@@ -23,9 +23,11 @@ bool display_help = false;
 int hpx_main(boost::program_options::variables_map& vm) {
 
     // extract command line argument
-//    N = vm["n-value"].as<std::uint64_t>();
+    bool verbose = vm["verbose"].as<bool>();
     std::string grid_file_name = vm["grid-file"].as<std::string>();
     size_t steps = vm["steps"].as<size_t>();
+    bool write_steps = vm["write-steps"].as<bool>();
+    bool write_result = vm["write-result"].as<bool>();
 
     is_root_node = hpx::find_here() == hpx::find_root_locality();
 
@@ -37,11 +39,17 @@ int hpx_main(boost::program_options::variables_map& vm) {
         return hpx::finalize();
     }
 
-    lattice::grid2d grid = lattice::grid2d::from_file(grid_file_name);
+    lattice::grid2d grid = lattice::grid2d::from_file(grid_file_name, verbose);
 
     for (size_t step = 0; step < steps; step++) {
         grid.step();
-        grid.serialize_as_csv("serialized.csv." + std::to_string(step));
+        if (write_steps) {
+            grid.serialize_as_csv("serialized.csv." + std::to_string(step));
+        }
+    }
+
+    if (write_result) {
+        grid.serialize_as_csv("result.csv");
     }
 
     return hpx::finalize(); // Handles HPX shutdown
@@ -52,7 +60,12 @@ int main(int argc, char* argv[]) {
     desc_commandline.add_options()("help", "display help")("grid-file",
             boost::program_options::value<std::string>()->default_value(""),
             "input file in csv format, describes grid with sources and drains and border cells")("steps",
-            boost::program_options::value<size_t>()->default_value(1), "steps for the simulation to run");
+            boost::program_options::value<size_t>()->default_value(1), "steps for the simulation to run")("write-steps",
+            boost::program_options::value<bool>()->default_value(false),
+            "write a csv file after every lattice boltzmann step")("write-result",
+            boost::program_options::value<bool>()->default_value(true),
+            "write a velocity field of the final state of the domain")("verbose",
+            boost::program_options::value<bool>()->default_value(true), "more stuff printed on the console");
 
 // Initialize and run HPX
     int return_value = hpx::init(desc_commandline, argc, argv);
