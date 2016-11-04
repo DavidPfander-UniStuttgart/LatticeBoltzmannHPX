@@ -9,6 +9,7 @@
 #include <hpx/include/iostreams.hpp>
 
 #include "grid2d.hpp"
+#include "grid2d_tiled.hpp"
 
 //#include <hpx/include/actions.hpp>
 //#include <hpx/include/async.hpp>
@@ -28,6 +29,7 @@ int hpx_main(boost::program_options::variables_map& vm) {
     size_t steps = vm["steps"].as<size_t>();
     bool write_steps = vm["write-steps"].as<bool>();
     bool write_result = vm["write-result"].as<bool>();
+    std::string algorithm = vm["algorithm"].as<std::string>();
 
     is_root_node = hpx::find_here() == hpx::find_root_locality();
 
@@ -39,17 +41,32 @@ int hpx_main(boost::program_options::variables_map& vm) {
         return hpx::finalize();
     }
 
-    lattice::grid2d grid = lattice::grid2d::from_file(grid_file_name, verbose);
+    if (algorithm.compare("simple") == 0) {
+        lattice::grid2d grid = lattice::grid2d::from_file(grid_file_name, verbose);
 
-    for (size_t step = 0; step < steps; step++) {
-        grid.step();
-        if (write_steps) {
-            grid.serialize_as_csv("serialized.csv." + std::to_string(step));
+        for (size_t step = 0; step < steps; step++) {
+            grid.step();
+            if (write_steps) {
+                grid.serialize_as_csv("serialized.csv." + std::to_string(step));
+            }
         }
-    }
 
-    if (write_result) {
-        grid.serialize_as_csv("result.csv");
+        if (write_result) {
+            grid.serialize_as_csv("result.csv");
+        }
+    } else if (algorithm.compare("tiled") == 0) {
+        lattice::grid2d_tiled grid = lattice::grid2d_tiled::from_file(grid_file_name, verbose);
+
+//        for (size_t step = 0; step < steps; step++) {
+//            grid.step();
+//            if (write_steps) {
+//                grid.serialize_as_csv("serialized.csv." + std::to_string(step));
+//            }
+//        }
+//
+//        if (write_result) {
+//            grid.serialize_as_csv("result.csv");
+//        }
     }
 
     return hpx::finalize(); // Handles HPX shutdown
@@ -65,7 +82,8 @@ int main(int argc, char* argv[]) {
             "write a csv file after every lattice boltzmann step")("write-result",
             boost::program_options::value<bool>()->default_value(true),
             "write a velocity field of the final state of the domain")("verbose",
-            boost::program_options::value<bool>()->default_value(true), "more stuff printed on the console");
+            boost::program_options::value<bool>()->default_value(true), "more stuff printed on the console")(
+            "algorithm", boost::program_options::value<std::string>()->default_value(""), "choices are: simple, tiled");
 
 // Initialize and run HPX
     int return_value = hpx::init(desc_commandline, argc, argv);
