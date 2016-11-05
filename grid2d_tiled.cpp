@@ -8,9 +8,12 @@
 #include <cmath>
 
 #include "index_iterator.hpp"
+
 #include "types.hpp"
+#include "memory_layout.hpp"
+
+// include boost last to avoid hpx complaining
 #include <boost/tokenizer.hpp>
-#include "tile_array.hpp"
 
 namespace lattice {
 
@@ -142,6 +145,128 @@ grid2d_tiled grid2d_tiled::from_file(std::string file_name, bool verbose) {
     }
     std::cout << "----------------------------------------" << std::endl;
 
+//    for (size_t tile_x = 0; tile_x < x_size / 10; tile_x++) {
+//        for (size_t tile_y = 0; tile_y < y_size / 10; tile_y++) {
+//            size_t tile_index[2];
+//            tile_index[0] = tile_x;
+//            tile_index[1] = tile_y;
+//            memory_layout::tile_view<2, lattice::CELL_TYPES> v(cells_tiled, tile_index, tiling_information);
+//            for (size_t x = 0; x < 10; x++) {
+//                for (size_t y = 0; y < 10; y++) {
+//                    if (y > 0) {
+//                        std::cout << " ";
+//                    }
+//                    if (v[x * 10 + y] == CELL_TYPES::BORDER) {
+//                        std::cout << "B";
+//                    } else if (v[x * 10 + y] == CELL_TYPES::DRAIN) {
+//                        std::cout << "D";
+//                    } else if (v[x * 10 + y] == CELL_TYPES::SOURCE) {
+//                        std::cout << "S";
+//                    } else if (v[x * 10 + y] == CELL_TYPES::WATER) {
+//                        std::cout << "W";
+//                    }
+//                }
+//                std::cout << std::endl;
+//            }
+//            std::cout << "----------------------------------------------------------" << std::endl;
+//        }
+//    }
+
+//    memory_layout::iterate_tiles<2>(cells_tiled, tiling_information,
+//            [](memory_layout::tile_view<2, lattice::CELL_TYPES> v) {
+//                for (size_t x = 0; x < 10; x++) {
+//                    for (size_t y = 0; y < 10; y++) {
+//                        if (y > 0) {
+//                            std::cout << " ";
+//                        }
+//                        if (v(x, y) == CELL_TYPES::BORDER) {
+//                            std::cout << "B";
+//                        } else if (v(x, y) == CELL_TYPES::DRAIN) {
+//                            std::cout << "D";
+//                        } else if (v(x, y) == CELL_TYPES::SOURCE) {
+//                            std::cout << "S";
+//                        } else if (v(x, y) == CELL_TYPES::WATER) {
+//                            std::cout << "W";
+//                        }
+//                    }
+//                    std::cout << std::endl;
+//                }
+//                std::cout << "----------------------------------------------------------" << std::endl;
+//            });
+
+    memory_layout::iterate_tiles<2>(cells_tiled, tiling_information,
+            [](memory_layout::tile_view<2, lattice::CELL_TYPES> v) {
+
+                size_t row_start[2];
+
+                for (size_t x = 0; x < 10; x++) {
+                    row_start[0] = x;
+                    row_start[1] = 0;
+
+                    memory_layout::tile_view_iterator<2, CELL_TYPES> v_iterator(v, row_start);
+
+                    bool first = true;
+                    hpx::parallel::for_each_n(hpx::parallel::seq, v_iterator, 10, [&first](const CELL_TYPES &cell_type) {
+                                if (first) {
+                                    first = false;
+                                } else {
+                                    std::cout << " ";
+                                }
+                                if (cell_type == CELL_TYPES::BORDER) {
+                                    std::cout << "B";
+                                } else if (cell_type == CELL_TYPES::DRAIN) {
+                                    std::cout << "D";
+                                } else if (cell_type == CELL_TYPES::SOURCE) {
+                                    std::cout << "S";
+                                } else if (cell_type == CELL_TYPES::WATER) {
+                                    std::cout << "W";
+                                }
+                            });
+                    std::cout << std::endl;
+                }
+
+//                size_t col_counter = 0;
+//                hpx::parallel::for_each_n(hpx::parallel::seq, v_iterator, 100, [&col_counter](const CELL_TYPES &cell_type) {
+//                            if (col_counter > 0) {
+//                                std::cout << " ";
+//                            }
+//                            if (cell_type == CELL_TYPES::BORDER) {
+//                                std::cout << "B";
+//                            } else if (cell_type == CELL_TYPES::DRAIN) {
+//                                std::cout << "D";
+//                            } else if (cell_type == CELL_TYPES::SOURCE) {
+//                                std::cout << "S";
+//                            } else if (cell_type == CELL_TYPES::WATER) {
+//                                std::cout << "W";
+//                            }
+//
+//                            col_counter += 1;
+//                            if (col_counter == 10) {
+//                                std::cout << std::endl;
+//                                col_counter = 0;
+//                            }
+//                        });
+
+//                for (size_t x = 0; x < 10; x++) {
+//                    for (size_t y = 0; y < 10; y++) {
+//                        if (y > 0) {
+//                            std::cout << " ";
+//                        }
+//                        if (v(x, y) == CELL_TYPES::BORDER) {
+//                            std::cout << "B";
+//                        } else if (v(x, y) == CELL_TYPES::DRAIN) {
+//                            std::cout << "D";
+//                        } else if (v(x, y) == CELL_TYPES::SOURCE) {
+//                            std::cout << "S";
+//                        } else if (v(x, y) == CELL_TYPES::WATER) {
+//                            std::cout << "W";
+//                        }
+//                    }
+//                    std::cout << std::endl;
+//                }
+                std::cout << "----------------------------------------------------------" << std::endl;
+            });
+
     return grid2d_tiled(x_size, y_size, cells, verbose);
 }
 
@@ -152,7 +277,6 @@ void grid2d_tiled::serialize_as_csv(const std::string &file_name) {
     myfile << "x" << sep << "y" << sep << "z (dummy)" << sep << "value" << std::endl;
     for (size_t x = 0; x < x_size; x++) {
         for (size_t y = 0; y < y_size; y++) {
-//            myfile << x << sep << y << sep << 0.0 << sep << get_mass_density(x, y) << std::endl;
             double mass_density = get_mass_density(x, y);
             if (mass_density > 0.0) {
                 double momentum_density[2];
@@ -166,25 +290,6 @@ void grid2d_tiled::serialize_as_csv(const std::string &file_name) {
             }
         }
     }
-
-////    std::cout << " is x < x_size + 1? " << (-1 < x_size + 1) << std::endl;
-//    for (int64_t x = -1; x < static_cast<int64_t>(x_size + 1); x++) {
-//        for (int64_t y = -1; y < static_cast<int64_t>(y_size + 1); y++) {
-//            if (x >= 0 && x < static_cast<int64_t>(x_size) && y >= 0 && y < static_cast<int64_t>(y_size)) {
-////                if (get_cell(x, y) != CELL_TYPES::BORDER) {
-//                myfile << x << sep << y << sep << 0.0 << sep << get_mass_density(x, y) << std::endl;
-////                } else {
-////                    myfile << x << sep << y << sep << 0.0 << sep << 2.0 << std::endl;
-////                }
-//            } else {
-//                double mass_density = 0.0;
-//                for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
-//                    mass_density += get_population(x, y, dir);
-//                }
-//                myfile << x << sep << y << sep << 0.0 << sep << mass_density << std::endl;
-//            }
-//        }
-//    }
     myfile.close();
 }
 

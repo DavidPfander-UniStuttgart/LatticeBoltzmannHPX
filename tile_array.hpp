@@ -9,38 +9,34 @@
 
 #include <vector>
 
-#include "index_iterator.hpp"
+#include "loop_nest.hpp"
 
 namespace memory_layout {
 
-template<size_t dim, size_t remaining_dim, size_t cur_dim, typename T, typename F>
-typename std::enable_if<remaining_dim == 0, void>::type execute_looped(const T (&min)[dim], const T (&max)[dim],
-        const T (&step)[dim], T (&completed_index)[dim], F f) {
-    f(completed_index);
-}
-
-template<size_t dim, size_t remaining_dim, size_t cur_dim, typename T, typename F>
-typename std::enable_if<remaining_dim != 0, void>::type execute_looped(const T (&min)[dim], const T (&max)[dim],
-        const T (&step)[dim], T (&partial_index)[dim], F f) {
-    for (T cur = min[cur_dim]; cur < max[cur_dim]; cur += step[cur_dim]) {
-        partial_index[cur_dim] = cur;
-        execute_looped<dim, remaining_dim - 1, cur_dim + 1>(min, max, step, partial_index, f);
-    }
-}
-
-template<size_t dim, typename T, typename F>
-void loop_nest(const T (&min)[dim], const T (&max)[dim], const T (&step)[dim], F f) {
-    T partial_index[dim];
-    execute_looped<dim, dim, 0>(min, max, step, partial_index, f);
-}
+//template<size_t dim, size_t remaining_dim, size_t cur_dim, typename T, typename F>
+//typename std::enable_if<remaining_dim == 0, void>::type execute_looped(const T (&min)[dim], const T (&max)[dim],
+//        const T (&step)[dim], T (&completed_index)[dim], F f) {
+//    f(completed_index);
+//}
+//
+//template<size_t dim, size_t remaining_dim, size_t cur_dim, typename T, typename F>
+//typename std::enable_if<remaining_dim != 0, void>::type execute_looped(const T (&min)[dim], const T (&max)[dim],
+//        const T (&step)[dim], T (&partial_index)[dim], F f) {
+//    for (T cur = min[cur_dim]; cur < max[cur_dim]; cur += step[cur_dim]) {
+//        partial_index[cur_dim] = cur;
+//        execute_looped<dim, remaining_dim - 1, cur_dim + 1>(min, max, step, partial_index, f);
+//    }
+//}
 
 struct tiling_info_dim {
     size_t tile_size_dir;
     size_t stride;
 };
 
-template<size_t dim, size_t remaining_dim, size_t cur_dim, typename T>
-typename std::enable_if<remaining_dim == 0, void>::type tile_dim(std::vector<T> &tiled, const std::vector<T> &org,
+namespace detail {
+
+template<size_t dim, size_t cur_dim, typename T>
+typename std::enable_if<cur_dim == dim, void>::type tile_dim(std::vector<T> &tiled, const std::vector<T> &org,
         const std::vector<tiling_info_dim> &tiling_info, size_t (&tile_index)[dim]) {
 
     std::cout << "tile_index: ";
@@ -99,7 +95,7 @@ typename std::enable_if<remaining_dim == 0, void>::type tile_dim(std::vector<T> 
 //    }
 //    std::cout << std::endl;
 
-    loop_nest<dim>(min, max, stride,
+    util::loop_nest<dim>(min, max, stride,
             [&tiled, &org, &tiling_info, &tile_index, skipped_blocks](const size_t (&inner_index)[dim]) {
 //                std::cout << "inner_index: ";
 //                for (size_t d = 0; d < dim; d++) {
@@ -124,8 +120,8 @@ typename std::enable_if<remaining_dim == 0, void>::type tile_dim(std::vector<T> 
                     if (d > 0) {
                         std::cout << ", ";
                     }
-                    std::cout << (tile_index[(dim - 1) - d] *  tiling_info[(dim - 1) - d].tile_size_dir + inner_index[(dim - 1) - d]);
-                    original_flat_index += (tile_index[(dim - 1) - d] *  tiling_info[(dim - 1) - d].tile_size_dir + inner_index[(dim - 1) - d]) * cur_stride;
+                    std::cout << (tile_index[(dim - 1) - d] * tiling_info[(dim - 1) - d].tile_size_dir + inner_index[(dim - 1) - d]);
+                    original_flat_index += (tile_index[(dim - 1) - d] * tiling_info[(dim - 1) - d].tile_size_dir + inner_index[(dim - 1) - d]) * cur_stride;
                     cur_stride *= tiling_info[(dim - 1) - d].stride;
                 }
                 std::cout << std::endl;
@@ -136,15 +132,16 @@ typename std::enable_if<remaining_dim == 0, void>::type tile_dim(std::vector<T> 
             });
 }
 
-template<size_t dim, size_t remaining_dim, size_t cur_dim, typename T>
-typename std::enable_if<remaining_dim != 0, void>::type tile_dim(std::vector<T> &tiled, const std::vector<T> &org,
+template<size_t dim, size_t cur_dim, typename T>
+typename std::enable_if<cur_dim != dim, void>::type tile_dim(std::vector<T> &tiled, const std::vector<T> &org,
         const std::vector<tiling_info_dim> &tiling_info, size_t (&partial_tile_index)[dim]) {
     const tiling_info_dim &cur_info = tiling_info[cur_dim];
-//    std::cout << "dim d=" << cur_dim << " to: " << (cur_info.stride / cur_info.tile_size_dir) << std::endl;
     for (size_t tile_index_1d = 0; tile_index_1d < cur_info.stride / cur_info.tile_size_dir; tile_index_1d += 1) {
         partial_tile_index[cur_dim] = tile_index_1d;
-        tile_dim<dim, remaining_dim - 1, cur_dim + 1>(tiled, org, tiling_info, partial_tile_index);
+        tile_dim<dim, cur_dim + 1>(tiled, org, tiling_info, partial_tile_index);
     }
+}
+
 }
 
 // dimension of matrix, dimension of tiles
@@ -157,7 +154,7 @@ std::vector<T> make_tiled(std::vector<T> &org, const std::vector<tiling_info_dim
     }
 
     size_t tile_index[dim];
-    tile_dim<dim, dim, 0>(tiled, org, tiling_info, tile_index);
+    detail::tile_dim<dim, 0>(tiled, org, tiling_info, tile_index);
 
     return tiled;
 }
