@@ -1,4 +1,4 @@
-#include "grid2d_tiled.hpp"
+#include "grid2d_algorithms.hpp"
 
 #include <string>
 #include <sstream>
@@ -7,6 +7,8 @@
 #include <iomanip>
 #include <cmath>
 
+#include <hpx/hpx.hpp>
+
 #include "index_iterator.hpp"
 
 #include "types.hpp"
@@ -14,6 +16,7 @@
 
 // include boost last to avoid hpx complaining
 #include <boost/tokenizer.hpp>
+#include <boost/range/functions.hpp>
 
 namespace lattice {
 
@@ -22,12 +25,12 @@ namespace lattice {
 // W=3 C=4 E=5
 // SW=6 S=7 SE=8
 
-const double grid2d_tiled::SPEEDS_X[DIRECTIONS_2D] = { -C, 0, C, -C, 0, C, -C, 0, C };
-const double grid2d_tiled::SPEEDS_Y[DIRECTIONS_2D] = { -C, -C, -C, 0, 0, 0, C, C, C };
-const double grid2d_tiled::weights[DIRECTIONS_2D] = { 1.0 / 36.0, 1.0 / 9.0, 1.0 / 36.0, 1.0 / 9.0, 4.0 / 9.0, 1.0
+const double grid2d_algorithms::SPEEDS_X[DIRECTIONS_2D] = { -C, 0, C, -C, 0, C, -C, 0, C };
+const double grid2d_algorithms::SPEEDS_Y[DIRECTIONS_2D] = { -C, -C, -C, 0, 0, 0, C, C, C };
+const double grid2d_algorithms::weights[DIRECTIONS_2D] = { 1.0 / 36.0, 1.0 / 9.0, 1.0 / 36.0, 1.0 / 9.0, 4.0 / 9.0, 1.0
         / 9.0, 1.0 / 36.0, 1.0 / 9.0, 1.0 / 36.0 };
 
-grid2d_tiled grid2d_tiled::from_file(std::string file_name, bool verbose) {
+grid2d_algorithms grid2d_algorithms::from_file(std::string file_name, bool verbose) {
     std::stringstream ss;
     ss << std::ifstream(file_name).rdbuf();
 
@@ -81,69 +84,69 @@ grid2d_tiled grid2d_tiled::from_file(std::string file_name, bool verbose) {
         }
     }
 
-    std::vector<memory_layout::tiling_info_dim> tiling_information;
-
-    memory_layout::tiling_info_dim tiling_info_y;
-
-    memory_layout::tiling_info_dim tiling_info_x;
-    tiling_info_x.stride = x_size;
-    tiling_info_x.tile_size_dir = 10;
-    tiling_information.push_back(tiling_info_x);
-
-    tiling_info_y.stride = y_size;
-    tiling_info_y.tile_size_dir = 10;
-    tiling_information.push_back(tiling_info_y);
-
-    std::cout << "x_size: " << x_size << std::endl;
-    std::cout << "y_size: " << y_size << std::endl;
-    for (size_t x = 0; x < x_size; x++) {
-        if (x < 10) {
-            std::cout << " ";
-        }
-        std::cout << x << "| ";
-        for (size_t y = 0; y < y_size; y++) {
-            if (y > 0) {
-                std::cout << " ";
-            }
-            if (cells[x * y_size + y] == CELL_TYPES::BORDER) {
-                std::cout << "B";
-            } else if (cells[x * y_size + y] == CELL_TYPES::DRAIN) {
-                std::cout << "D";
-            } else if (cells[x * y_size + y] == CELL_TYPES::SOURCE) {
-                std::cout << "S";
-            } else if (cells[x * y_size + y] == CELL_TYPES::WATER) {
-                std::cout << "W";
-            }
-        }
-        std::cout << std::endl;
-    }
-    std::cout << "----------------------------------------" << std::endl;
-
-    std::vector<lattice::CELL_TYPES> cells_tiled = memory_layout::make_tiled<2>(cells, tiling_information);
-
-    std::cout << "tiled:" << std::endl;
-    for (size_t x = 0; x < x_size; x++) {
-        if (x < 10) {
-            std::cout << " ";
-        }
-        std::cout << x << "| ";
-        for (size_t y = 0; y < y_size; y++) {
-            if (y > 0) {
-                std::cout << " ";
-            }
-            if (cells_tiled[x * y_size + y] == CELL_TYPES::BORDER) {
-                std::cout << "B";
-            } else if (cells_tiled[x * y_size + y] == CELL_TYPES::DRAIN) {
-                std::cout << "D";
-            } else if (cells_tiled[x * y_size + y] == CELL_TYPES::SOURCE) {
-                std::cout << "S";
-            } else if (cells_tiled[x * y_size + y] == CELL_TYPES::WATER) {
-                std::cout << "W";
-            }
-        }
-        std::cout << std::endl;
-    }
-    std::cout << "----------------------------------------" << std::endl;
+//    std::vector<memory_layout::tiling_info_dim> tiling_information;
+//
+//    memory_layout::tiling_info_dim tiling_info_y;
+//
+//    memory_layout::tiling_info_dim tiling_info_x;
+//    tiling_info_x.stride = x_size;
+//    tiling_info_x.tile_size_dir = 10;
+//    tiling_information.push_back(tiling_info_x);
+//
+//    tiling_info_y.stride = y_size;
+//    tiling_info_y.tile_size_dir = 10;
+//    tiling_information.push_back(tiling_info_y);
+//
+//    std::cout << "x_size: " << x_size << std::endl;
+//    std::cout << "y_size: " << y_size << std::endl;
+//    for (size_t x = 0; x < x_size; x++) {
+//        if (x < 10) {
+//            std::cout << " ";
+//        }
+//        std::cout << x << "| ";
+//        for (size_t y = 0; y < y_size; y++) {
+//            if (y > 0) {
+//                std::cout << " ";
+//            }
+//            if (cells[x * y_size + y] == CELL_TYPES::BORDER) {
+//                std::cout << "B";
+//            } else if (cells[x * y_size + y] == CELL_TYPES::DRAIN) {
+//                std::cout << "D";
+//            } else if (cells[x * y_size + y] == CELL_TYPES::SOURCE) {
+//                std::cout << "S";
+//            } else if (cells[x * y_size + y] == CELL_TYPES::WATER) {
+//                std::cout << "W";
+//            }
+//        }
+//        std::cout << std::endl;
+//    }
+//    std::cout << "----------------------------------------" << std::endl;
+//
+//    std::vector<lattice::CELL_TYPES> cells_tiled = memory_layout::make_tiled<2>(cells, tiling_information);
+//
+//    std::cout << "tiled:" << std::endl;
+//    for (size_t x = 0; x < x_size; x++) {
+//        if (x < 10) {
+//            std::cout << " ";
+//        }
+//        std::cout << x << "| ";
+//        for (size_t y = 0; y < y_size; y++) {
+//            if (y > 0) {
+//                std::cout << " ";
+//            }
+//            if (cells_tiled[x * y_size + y] == CELL_TYPES::BORDER) {
+//                std::cout << "B";
+//            } else if (cells_tiled[x * y_size + y] == CELL_TYPES::DRAIN) {
+//                std::cout << "D";
+//            } else if (cells_tiled[x * y_size + y] == CELL_TYPES::SOURCE) {
+//                std::cout << "S";
+//            } else if (cells_tiled[x * y_size + y] == CELL_TYPES::WATER) {
+//                std::cout << "W";
+//            }
+//        }
+//        std::cout << std::endl;
+//    }
+//    std::cout << "----------------------------------------" << std::endl;
 
 //    for (size_t tile_x = 0; tile_x < x_size / 10; tile_x++) {
 //        for (size_t tile_y = 0; tile_y < y_size / 10; tile_y++) {
@@ -194,36 +197,36 @@ grid2d_tiled grid2d_tiled::from_file(std::string file_name, bool verbose) {
 //                std::cout << "----------------------------------------------------------" << std::endl;
 //            });
 
-    memory_layout::iterate_tiles<2>(cells_tiled, tiling_information,
-            [](memory_layout::tile_view<2, lattice::CELL_TYPES> v) {
-
-                size_t row_start[2];
-
-                for (size_t x = 0; x < 10; x++) {
-                    row_start[0] = x;
-                    row_start[1] = 0;
-
-                    memory_layout::tile_view_iterator<2, CELL_TYPES> v_iterator(v, row_start);
-
-                    bool first = true;
-                    hpx::parallel::for_each_n(hpx::parallel::seq, v_iterator, 10, [&first](const CELL_TYPES &cell_type) {
-                                if (first) {
-                                    first = false;
-                                } else {
-                                    std::cout << " ";
-                                }
-                                if (cell_type == CELL_TYPES::BORDER) {
-                                    std::cout << "B";
-                                } else if (cell_type == CELL_TYPES::DRAIN) {
-                                    std::cout << "D";
-                                } else if (cell_type == CELL_TYPES::SOURCE) {
-                                    std::cout << "S";
-                                } else if (cell_type == CELL_TYPES::WATER) {
-                                    std::cout << "W";
-                                }
-                            });
-                    std::cout << std::endl;
-                }
+//    memory_layout::iterate_tiles<2>(cells_tiled, tiling_information,
+//            [](memory_layout::tile_view<2, lattice::CELL_TYPES> v) {
+//
+//                size_t row_start[2];
+//
+//                for (size_t x = 0; x < 10; x++) {
+//                    row_start[0] = x;
+//                    row_start[1] = 0;
+//
+//                    memory_layout::tile_view_iterator<2, CELL_TYPES> v_iterator(v, row_start);
+//
+//                    bool first = true;
+//                    hpx::parallel::for_each_n(hpx::parallel::seq, v_iterator, 10, [&first](const CELL_TYPES &cell_type) {
+//                                if (first) {
+//                                    first = false;
+//                                } else {
+//                                    std::cout << " ";
+//                                }
+//                                if (cell_type == CELL_TYPES::BORDER) {
+//                                    std::cout << "B";
+//                                } else if (cell_type == CELL_TYPES::DRAIN) {
+//                                    std::cout << "D";
+//                                } else if (cell_type == CELL_TYPES::SOURCE) {
+//                                    std::cout << "S";
+//                                } else if (cell_type == CELL_TYPES::WATER) {
+//                                    std::cout << "W";
+//                                }
+//                            });
+//                    std::cout << std::endl;
+//                }
 
 //                size_t col_counter = 0;
 //                hpx::parallel::for_each_n(hpx::parallel::seq, v_iterator, 100, [&col_counter](const CELL_TYPES &cell_type) {
@@ -264,13 +267,13 @@ grid2d_tiled grid2d_tiled::from_file(std::string file_name, bool verbose) {
 //                    }
 //                    std::cout << std::endl;
 //                }
-                std::cout << "----------------------------------------------------------" << std::endl;
-            });
+//                std::cout << "----------------------------------------------------------" << std::endl;
+//            });
 
-    return grid2d_tiled(x_size, y_size, cells, verbose);
+    return grid2d_algorithms(x_size, y_size, cells, verbose);
 }
 
-void grid2d_tiled::serialize_as_csv(const std::string &file_name) {
+void grid2d_algorithms::serialize_as_csv(const std::string &file_name) {
     std::ofstream myfile;
     myfile.open(file_name);
     const std::string sep(",");
@@ -293,15 +296,16 @@ void grid2d_tiled::serialize_as_csv(const std::string &file_name) {
     myfile.close();
 }
 
-size_t grid2d_tiled::get_pop_index(int64_t x, int64_t y) {
+size_t grid2d_algorithms::get_pop_index(int64_t x, int64_t y) {
     return (x + 1) * (y_size + 2) + (y + 1);
 }
 
-size_t grid2d_tiled::get_cell_index(int64_t x, int64_t y) {
+size_t grid2d_algorithms::get_cell_index(int64_t x, int64_t y) {
     return (x + 1) * (y_size + 2) + (y + 1);
 }
 
-grid2d_tiled::grid2d_tiled(size_t x_size, size_t y_size, std::vector<lattice::CELL_TYPES> &cells_unpadded, bool verbose) :
+grid2d_algorithms::grid2d_algorithms(size_t x_size, size_t y_size, std::vector<lattice::CELL_TYPES> &cells_unpadded,
+        bool verbose) :
         verbose(verbose), x_size(x_size), y_size(y_size) {
     populations = std::make_unique<std::array<std::vector<double>, DIRECTIONS_2D>>();
     new_populations = std::make_unique<std::array<std::vector<double>, DIRECTIONS_2D>>();
@@ -338,16 +342,15 @@ grid2d_tiled::grid2d_tiled(size_t x_size, size_t y_size, std::vector<lattice::CE
     }
 }
 
-void grid2d_tiled::step() {
+void grid2d_algorithms::step() {
 
     // switch arrays
     std::swap(populations, new_populations);
 
+    //TODO: is that efficient? check assembly
     for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
         std::fill((*new_populations)[dir].begin(), (*new_populations)[dir].end(), 0.0);
     }
-
-//    print_grid();
 
     collide();
     stream();
@@ -360,18 +363,61 @@ void grid2d_tiled::step() {
     }
 }
 
-void grid2d_tiled::get_momentum_density(size_t x, size_t y, double (&momentum_density)[2]) {
+void grid2d_algorithms::get_momentum_density(
+        hpx::util::tuple<double &, double &, double &, double &, double &, double &, double &, double &, double &,
+                CELL_TYPES> &t, double (&momentum_density)[2]) {
+    momentum_density[0] = 0.0;
+    momentum_density[1] = 0.0;
+
+    momentum_density[0] += hpx::util::get<0>(t) * grid2d_algorithms::SPEEDS_X[0];
+    momentum_density[0] += hpx::util::get<1>(t) * grid2d_algorithms::SPEEDS_X[1];
+    momentum_density[0] += hpx::util::get<2>(t) * grid2d_algorithms::SPEEDS_X[2];
+    momentum_density[0] += hpx::util::get<3>(t) * grid2d_algorithms::SPEEDS_X[3];
+    momentum_density[0] += hpx::util::get<4>(t) * grid2d_algorithms::SPEEDS_X[4];
+    momentum_density[0] += hpx::util::get<5>(t) * grid2d_algorithms::SPEEDS_X[5];
+    momentum_density[0] += hpx::util::get<6>(t) * grid2d_algorithms::SPEEDS_X[6];
+    momentum_density[0] += hpx::util::get<7>(t) * grid2d_algorithms::SPEEDS_X[7];
+    momentum_density[0] += hpx::util::get<8>(t) * grid2d_algorithms::SPEEDS_X[8];
+
+    momentum_density[1] += hpx::util::get<0>(t) * grid2d_algorithms::SPEEDS_Y[0];
+    momentum_density[1] += hpx::util::get<1>(t) * grid2d_algorithms::SPEEDS_Y[1];
+    momentum_density[1] += hpx::util::get<2>(t) * grid2d_algorithms::SPEEDS_Y[2];
+    momentum_density[1] += hpx::util::get<3>(t) * grid2d_algorithms::SPEEDS_Y[3];
+    momentum_density[1] += hpx::util::get<4>(t) * grid2d_algorithms::SPEEDS_Y[4];
+    momentum_density[1] += hpx::util::get<5>(t) * grid2d_algorithms::SPEEDS_Y[5];
+    momentum_density[1] += hpx::util::get<6>(t) * grid2d_algorithms::SPEEDS_Y[6];
+    momentum_density[1] += hpx::util::get<7>(t) * grid2d_algorithms::SPEEDS_Y[7];
+    momentum_density[1] += hpx::util::get<8>(t) * grid2d_algorithms::SPEEDS_Y[8];
+}
+
+double grid2d_algorithms::get_mass_density(
+        hpx::util::tuple<double &, double &, double &, double &, double &, double &, double &, double &, double &,
+                CELL_TYPES> &t) {
+    double mass_density = 0.0;
+    mass_density += hpx::util::get<0>(t);
+    mass_density += hpx::util::get<1>(t);
+    mass_density += hpx::util::get<2>(t);
+    mass_density += hpx::util::get<3>(t);
+    mass_density += hpx::util::get<4>(t);
+    mass_density += hpx::util::get<5>(t);
+    mass_density += hpx::util::get<6>(t);
+    mass_density += hpx::util::get<7>(t);
+    mass_density += hpx::util::get<8>(t);
+    return mass_density;
+}
+
+void grid2d_algorithms::get_momentum_density(size_t x, size_t y, double (&momentum_density)[2]) {
     momentum_density[0] = 0.0;
     momentum_density[1] = 0.0;
     for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
-        momentum_density[0] += get_population(x, y, dir) * grid2d_tiled::SPEEDS_X[dir];
+        momentum_density[0] += get_population(x, y, dir) * grid2d_algorithms::SPEEDS_X[dir];
     }
     for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
-        momentum_density[1] += get_population(x, y, dir) * grid2d_tiled::SPEEDS_Y[dir];
+        momentum_density[1] += get_population(x, y, dir) * grid2d_algorithms::SPEEDS_Y[dir];
     }
 }
 
-double grid2d_tiled::get_mass_density(size_t x, size_t y) {
+double grid2d_algorithms::get_mass_density(size_t x, size_t y) {
     double mass_density = 0.0;
     for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
         mass_density += get_population(x, y, dir);
@@ -379,45 +425,57 @@ double grid2d_tiled::get_mass_density(size_t x, size_t y) {
     return mass_density;
 }
 
-double grid2d_tiled::calculate_equilibrium(const size_t dir, const double mass_density, const double (&u)[2]) {
+double grid2d_algorithms::calculate_equilibrium(const size_t dir, const double mass_density, const double (&u)[2]) {
     double u2 = u[0] * u[0] + u[1] * u[1];
     double vu = SPEEDS_X[dir] * u[0] + SPEEDS_Y[dir] * u[1];
     return mass_density * weights[dir] * (1.0 + 3.0 * vu + 4.5 * vu * vu - 1.5 * u2);
 }
 
-void grid2d_tiled::collide() {
+void grid2d_algorithms::collide() {
 
-    index_iterator::blocking_pseudo_execution_policy<size_t> policy(2);
-    policy.add_blocking( { 1, y_size }, { true, false });
+    auto zip_it_begin = hpx::util::make_zip_iterator(boost::begin((*populations)[0]), boost::begin((*populations)[1]),
+            boost::begin((*populations)[2]), boost::begin((*populations)[3]), boost::begin((*populations)[4]),
+            boost::begin((*populations)[5]), boost::begin((*populations)[6]), boost::begin((*populations)[7]),
+            boost::begin((*populations)[8]), boost::begin(cells));
 
-    index_iterator::iterate_indices<2>(policy, { 0, 0 }, { x_size, y_size }, [this](size_t x, size_t y) {
-        if (get_cell(x, y) == CELL_TYPES::WATER) {
-            double mass_density = get_mass_density(x, y);
-            double momentum_density[2];
-            get_momentum_density(x, y, momentum_density);
-            double u[2] = {momentum_density[0] / mass_density, momentum_density[1] / mass_density};
+    auto zip_it_end = hpx::util::make_zip_iterator(boost::end((*populations)[0]), boost::end((*populations)[1]),
+            boost::end((*populations)[2]), boost::end((*populations)[3]), boost::end((*populations)[4]),
+            boost::end((*populations)[5]), boost::end((*populations)[6]), boost::end((*populations)[7]),
+            boost::end((*populations)[8]), boost::end(cells));
 
-            for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
-                double probability_dir = (1 - OMEGA) * get_population(x, y, dir)
-                + OMEGA * calculate_equilibrium(dir, mass_density, u);
-                if (probability_dir >= 0.0) {
-                    get_population(x, y, dir) = probability_dir;
-                } else {
-                    get_population(x, y, dir) = 0.0;
+    hpx::parallel::for_each(hpx::parallel::seq, zip_it_begin, zip_it_end,
+            [this](hpx::util::tuple<
+                    double &, double &, double &,
+                    double &, double &, double &,
+                    double &, double &, double &,
+                    CELL_TYPES> t) {
+
+                if (hpx::util::get<9>(t) == CELL_TYPES::WATER) {
+                    double mass_density = get_mass_density(t);
+                    double momentum_density[2];
+                    get_momentum_density(t, momentum_density);
+                    double u[2] = {momentum_density[0] / mass_density, momentum_density[1] / mass_density};
+
+                    hpx::util::get<0>(t) = std::max(0.0, (1 - OMEGA) * hpx::util::get<0>(t) + OMEGA * calculate_equilibrium(0, mass_density, u));
+                    hpx::util::get<1>(t) = std::max(0.0, (1 - OMEGA) * hpx::util::get<1>(t) + OMEGA * calculate_equilibrium(1, mass_density, u));
+                    hpx::util::get<2>(t) = std::max(0.0, (1 - OMEGA) * hpx::util::get<2>(t) + OMEGA * calculate_equilibrium(2, mass_density, u));
+                    hpx::util::get<3>(t) = std::max(0.0, (1 - OMEGA) * hpx::util::get<3>(t) + OMEGA * calculate_equilibrium(3, mass_density, u));
+                    hpx::util::get<4>(t) = std::max(0.0, (1 - OMEGA) * hpx::util::get<4>(t) + OMEGA * calculate_equilibrium(4, mass_density, u));
+                    hpx::util::get<5>(t) = std::max(0.0, (1 - OMEGA) * hpx::util::get<5>(t) + OMEGA * calculate_equilibrium(5, mass_density, u));
+                    hpx::util::get<6>(t) = std::max(0.0, (1 - OMEGA) * hpx::util::get<6>(t) + OMEGA * calculate_equilibrium(6, mass_density, u));
+                    hpx::util::get<7>(t) = std::max(0.0, (1 - OMEGA) * hpx::util::get<7>(t) + OMEGA * calculate_equilibrium(7, mass_density, u));
+                    hpx::util::get<8>(t) = std::max(0.0, (1 - OMEGA) * hpx::util::get<8>(t) + OMEGA * calculate_equilibrium(8, mass_density, u));
                 }
-
-            }
-        }
-    });
+            });
 }
 
-void grid2d_tiled::initialize_cell(size_t x, size_t y, double factor) {
+void grid2d_algorithms::initialize_cell(size_t x, size_t y, double factor) {
     for (size_t dir = 0; dir < DIRECTIONS_2D; dir++) {
         get_new_population(x, y, dir) = factor * (1.0 / DIRECTIONS_2D);
     }
 }
 
-void grid2d_tiled::source() {
+void grid2d_algorithms::source() {
     index_iterator::blocking_pseudo_execution_policy<size_t> policy(2);
     policy.add_blocking( { 1, y_size }, { true, false });
 
@@ -428,7 +486,7 @@ void grid2d_tiled::source() {
     });
 }
 
-void grid2d_tiled::drain() {
+void grid2d_algorithms::drain() {
     index_iterator::blocking_pseudo_execution_policy<size_t> policy(2);
     policy.add_blocking( { 1, y_size }, { true, false });
 
@@ -442,7 +500,7 @@ void grid2d_tiled::drain() {
 }
 
 // fake boundary treatment, only physical by accident
-void grid2d_tiled::boundary() {
+void grid2d_algorithms::boundary() {
     index_iterator::blocking_pseudo_execution_policy<size_t> policy(2);
     policy.add_blocking( { 1, y_size }, { true, false });
 
@@ -523,26 +581,42 @@ void grid2d_tiled::boundary() {
         });
 }
 
-void grid2d_tiled::stream() {
-    index_iterator::blocking_pseudo_execution_policy<size_t> policy(2);
-    policy.add_blocking( { 1, y_size }, { true, false });
+void grid2d_algorithms::stream() {
 
-    index_iterator::iterate_indices<2>(policy, { 0, 0 }, { x_size, y_size }, [this](size_t x, size_t y) {
-        if (get_cell(x, y) != CELL_TYPES::BORDER) {
-            get_new_population(x + 1, y - 1, 0) = get_population(x, y, 0);
-            get_new_population(x + 1, y + 0, 1) = get_population(x, y, 1);
-            get_new_population(x + 1, y + 1, 2) = get_population(x, y, 2);
-            get_new_population(x + 0, y - 1, 3) = get_population(x, y, 3);
-            get_new_population(x + 0, y + 0, 4) = get_population(x, y, 4);
-            get_new_population(x + 0, y + 1, 5) = get_population(x, y, 5);
-            get_new_population(x - 1, y - 1, 6) = get_population(x, y, 6);
-            get_new_population(x - 1, y + 0, 7) = get_population(x, y, 7);
-            get_new_population(x - 1, y + 1, 8) = get_population(x, y, 8);
-        }
-    });
+    std::copy_n((*new_populations)[4].begin() + 1, x_size, (*populations)[4].begin() + 1);
+    for (size_t x = 0; x < x_size; x++) {
+        std::copy_n((*new_populations)[3].begin() + x * y_size + 1, y_size, (*populations)[3].begin() + x * y_size);
+        std::copy_n((*new_populations)[5].begin() + x * y_size + 1, y_size, (*populations)[5].begin() + x * y_size + 2);
+
+        std::copy_n((*new_populations)[1].begin() + x * y_size + 1, y_size, (*populations)[1].begin() + (x + 1) * y_size + 1);
+        std::copy_n((*new_populations)[7].begin() + x * y_size + 1, y_size, (*populations)[7].begin() + (x - 1) * y_size + 1);
+
+        std::copy_n((*new_populations)[6].begin() + x * y_size + 1, y_size, (*populations)[6].begin() + (x - 1) * y_size);
+        std::copy_n((*new_populations)[2].begin() + x * y_size + 1, y_size, (*populations)[2].begin() + (x + 1) * y_size + 2);
+
+        std::copy_n((*new_populations)[8].begin() + x * y_size + 1, y_size, (*populations)[8].begin() + (x - 1) * y_size + 2);
+        std::copy_n((*new_populations)[0].begin() + x * y_size + 1, y_size, (*populations)[0].begin() + (x + 1) * y_size);
+    }
+
+//    index_iterator::blocking_pseudo_execution_policy<size_t> policy(2);
+//    policy.add_blocking( { 1, y_size }, { true, false });
+//
+//    index_iterator::iterate_indices<2>(policy, { 0, 0 }, { x_size, y_size }, [this](size_t x, size_t y) {
+//        if (get_cell(x, y) != CELL_TYPES::BORDER) {
+//            get_new_population(x + 1, y - 1, 0) = get_population(x, y, 0);
+//            get_new_population(x + 1, y + 0, 1) = get_population(x, y, 1);
+//            get_new_population(x + 1, y + 1, 2) = get_population(x, y, 2);
+//            get_new_population(x + 0, y - 1, 3) = get_population(x, y, 3);
+//            get_new_population(x + 0, y + 0, 4) = get_population(x, y, 4);
+//            get_new_population(x + 0, y + 1, 5) = get_population(x, y, 5);
+//            get_new_population(x - 1, y - 1, 6) = get_population(x, y, 6);
+//            get_new_population(x - 1, y + 0, 7) = get_population(x, y, 7);
+//            get_new_population(x - 1, y + 1, 8) = get_population(x, y, 8);
+//        }
+//    });
 }
 
-void grid2d_tiled::print_grid() {
+void grid2d_algorithms::print_grid() {
     std::cout << "------------------STEP START----------------------" << std::endl;
 //    std::cout << "x_size: " << x_size << std::endl;
 //    std::cout << "y_size: " << y_size << std::endl;
@@ -603,15 +677,15 @@ void grid2d_tiled::print_grid() {
     }
 }
 
-lattice::CELL_TYPES &grid2d_tiled::get_cell(int64_t x, int64_t y) {
+lattice::CELL_TYPES &grid2d_algorithms::get_cell(int64_t x, int64_t y) {
     return cells.at(get_cell_index(x, y));
 }
 
-double &grid2d_tiled::get_population(int64_t x, int64_t y, size_t dir) {
+double &grid2d_algorithms::get_population(int64_t x, int64_t y, size_t dir) {
     return (*populations)[dir].at(get_pop_index(x, y));
 }
 
-double &grid2d_tiled::get_new_population(int64_t x, int64_t y, size_t dir) {
+double &grid2d_algorithms::get_new_population(int64_t x, int64_t y, size_t dir) {
     return (*new_populations)[dir].at(get_pop_index(x, y));
 }
 

@@ -4,13 +4,15 @@
 #include <vector>
 #include <memory>
 
+#include <hpx/hpx.hpp>
+
 #include "types.hpp"
 
 #define DIRECTIONS_2D 9
 
 namespace lattice {
 
-class grid2d_tiled {
+class grid2d_algorithms {
 public:
 
     static constexpr double OMEGA = 0.9;
@@ -21,7 +23,7 @@ public:
     static constexpr double MAX_TOTAL_MASS = 5.0;
     static const double weights[DIRECTIONS_2D];
 
-    static grid2d_tiled from_file(std::string file_name, bool verbose);
+    static grid2d_algorithms from_file(std::string file_name, bool verbose);
 
     void step();
 
@@ -30,7 +32,6 @@ public:
     void print_grid();
 
 private:
-
     bool verbose;
 
     size_t x_size;
@@ -41,7 +42,7 @@ private:
     std::unique_ptr<std::array<std::vector<double>, DIRECTIONS_2D>> populations; //[DIRECTIONS_2D];
     std::unique_ptr<std::array<std::vector<double>, DIRECTIONS_2D>> new_populations; //,.[DIRECTIONS_2D];
 
-    grid2d_tiled(size_t x_size, size_t y_size, std::vector<lattice::CELL_TYPES> &cells_unpadded, bool verbose);
+    grid2d_algorithms(size_t x_size, size_t y_size, std::vector<lattice::CELL_TYPES> &cells_unpadded, bool verbose);
 
     lattice::CELL_TYPES &get_cell(int64_t x, int64_t y);
 
@@ -54,6 +55,14 @@ private:
     size_t get_pop_index(int64_t x, int64_t y);
 
     size_t get_cell_index(int64_t x, int64_t y);
+
+    void get_momentum_density(
+            hpx::util::tuple<double &, double &, double &, double &, double &, double &, double &, double &, double &,
+                    CELL_TYPES> &t, double (&momentum_density)[2]);
+
+    double get_mass_density(
+            hpx::util::tuple<double &, double &, double &, double &, double &, double &, double &, double &, double &,
+                    CELL_TYPES> &t);
 
     void get_momentum_density(size_t x, size_t y, double (&momentum_density)[2]);
 

@@ -9,7 +9,7 @@
 #include <hpx/include/iostreams.hpp>
 
 #include "grid2d.hpp"
-#include "grid2d_tiled.hpp"
+#include "grid2d_algorithms.hpp"
 
 //#include <hpx/include/actions.hpp>
 //#include <hpx/include/async.hpp>
@@ -54,19 +54,19 @@ int hpx_main(boost::program_options::variables_map& vm) {
         if (write_result) {
             grid.serialize_as_csv("result.csv");
         }
-    } else if (algorithm.compare("tiled") == 0) {
-        lattice::grid2d_tiled grid = lattice::grid2d_tiled::from_file(grid_file_name, verbose);
+    } else if (algorithm.compare("algorithms") == 0) {
+        lattice::grid2d_algorithms grid = lattice::grid2d_algorithms::from_file(grid_file_name, verbose);
 
-//        for (size_t step = 0; step < steps; step++) {
-//            grid.step();
-//            if (write_steps) {
-//                grid.serialize_as_csv("serialized.csv." + std::to_string(step));
-//            }
-//        }
-//
-//        if (write_result) {
-//            grid.serialize_as_csv("result.csv");
-//        }
+        for (size_t step = 0; step < steps; step++) {
+            grid.step();
+            if (write_steps) {
+                grid.serialize_as_csv("serialized.csv." + std::to_string(step));
+            }
+        }
+
+        if (write_result) {
+            grid.serialize_as_csv("result.csv");
+        }
     }
 
     return hpx::finalize(); // Handles HPX shutdown
