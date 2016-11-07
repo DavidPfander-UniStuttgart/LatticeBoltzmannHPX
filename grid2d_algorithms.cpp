@@ -304,6 +304,14 @@ size_t grid2d_algorithms::get_cell_index(int64_t x, int64_t y) {
     return (x + 1) * (y_size + 2) + (y + 1);
 }
 
+size_t grid2d_algorithms::get_row_index_unpadded(int64_t x) {
+    return (x + 1) * (y_size + 2);
+}
+
+size_t grid2d_algorithms::get_row_index_padded(int64_t x) {
+    return (x + 1) * (y_size + 2) + 1;
+}
+
 grid2d_algorithms::grid2d_algorithms(size_t x_size, size_t y_size, std::vector<lattice::CELL_TYPES> &cells_unpadded,
         bool verbose) :
         verbose(verbose), x_size(x_size), y_size(y_size) {
@@ -443,7 +451,7 @@ void grid2d_algorithms::collide() {
             boost::end((*populations)[5]), boost::end((*populations)[6]), boost::end((*populations)[7]),
             boost::end((*populations)[8]), boost::end(cells));
 
-    hpx::parallel::for_each(hpx::parallel::seq, zip_it_begin, zip_it_end,
+    hpx::parallel::for_each(hpx::parallel::par, zip_it_begin, zip_it_end,
             [this](hpx::util::tuple<
                     double &, double &, double &,
                     double &, double &, double &,
@@ -583,20 +591,31 @@ void grid2d_algorithms::boundary() {
 
 void grid2d_algorithms::stream() {
 
-    std::copy_n((*new_populations)[4].begin() + 1, x_size, (*populations)[4].begin() + 1);
-    for (size_t x = 0; x < x_size; x++) {
-        std::copy_n((*new_populations)[3].begin() + x * y_size + 1, y_size, (*populations)[3].begin() + x * y_size);
-        std::copy_n((*new_populations)[5].begin() + x * y_size + 1, y_size, (*populations)[5].begin() + x * y_size + 2);
+//    std::copy((*populations)[4].begin(), (*populations)[4].end(), (*new_populations)[4].begin());
+    hpx::parallel::for_loop(hpx::parallel::par, 0, x_size, [this](size_t x){
+//    for (size_t x = 0; x < x_size; x++) {
+        std::copy_n((*populations)[4].begin() + get_row_index_padded(x), y_size,
+                (*new_populations)[4].begin() + get_row_index_unpadded(x) + 1);
 
-        std::copy_n((*new_populations)[1].begin() + x * y_size + 1, y_size, (*populations)[1].begin() + (x + 1) * y_size + 1);
-        std::copy_n((*new_populations)[7].begin() + x * y_size + 1, y_size, (*populations)[7].begin() + (x - 1) * y_size + 1);
+        std::copy_n((*populations)[3].begin() + get_row_index_padded(x), y_size,
+                (*new_populations)[3].begin() + get_row_index_unpadded(x));
+        std::copy_n((*populations)[5].begin() + get_row_index_padded(x), y_size,
+                (*new_populations)[5].begin() + get_row_index_unpadded(x) + 2);
 
-        std::copy_n((*new_populations)[6].begin() + x * y_size + 1, y_size, (*populations)[6].begin() + (x - 1) * y_size);
-        std::copy_n((*new_populations)[2].begin() + x * y_size + 1, y_size, (*populations)[2].begin() + (x + 1) * y_size + 2);
+        std::copy_n((*populations)[0].begin() + get_row_index_padded(x), y_size,
+                (*new_populations)[0].begin() + get_row_index_unpadded(x + 1));
+        std::copy_n((*populations)[1].begin() + get_row_index_padded(x), y_size,
+                (*new_populations)[1].begin() + +get_row_index_unpadded(x + 1) + 1);
+        std::copy_n((*populations)[2].begin() + get_row_index_padded(x), y_size,
+                (*new_populations)[2].begin() + get_row_index_unpadded(x + 1) + 2);
 
-        std::copy_n((*new_populations)[8].begin() + x * y_size + 1, y_size, (*populations)[8].begin() + (x - 1) * y_size + 2);
-        std::copy_n((*new_populations)[0].begin() + x * y_size + 1, y_size, (*populations)[0].begin() + (x + 1) * y_size);
-    }
+        std::copy_n((*populations)[6].begin() + get_row_index_padded(x), y_size,
+                (*new_populations)[6].begin() + get_row_index_unpadded(x - 1));
+        std::copy_n((*populations)[7].begin() + get_row_index_padded(x), y_size,
+                (*new_populations)[7].begin() + get_row_index_unpadded(x - 1) + 1);
+        std::copy_n((*populations)[8].begin() + get_row_index_padded(x), y_size,
+                (*new_populations)[8].begin() + get_row_index_unpadded(x - 1) + 2);
+    });
 
 //    index_iterator::blocking_pseudo_execution_policy<size_t> policy(2);
 //    policy.add_blocking( { 1, y_size }, { true, false });

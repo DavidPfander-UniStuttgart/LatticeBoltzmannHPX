@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
 fileName = "poisson_domain.sc"
-x_size = 1000
-y_size = 1000
+x_size = 10000
+y_size = 10000
 
 f = open(fileName, "w")
 f.write(str(x_size) + "\n")

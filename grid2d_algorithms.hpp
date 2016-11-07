@@ -56,6 +56,10 @@ private:
 
     size_t get_cell_index(int64_t x, int64_t y);
 
+    size_t get_row_index_unpadded(int64_t x);
+
+    size_t get_row_index_padded(int64_t x);
+
     void get_momentum_density(
             hpx::util::tuple<double &, double &, double &, double &, double &, double &, double &, double &, double &,
                     CELL_TYPES> &t, double (&momentum_density)[2]);
