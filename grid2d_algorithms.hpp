@@ -64,9 +64,14 @@ private:
             hpx::util::tuple<double &, double &, double &, double &, double &, double &, double &, double &, double &,
                     CELL_TYPES> &t, double (&momentum_density)[2]);
 
+    void get_momentum_density(
+            double (&cell_pop)[9], double (&momentum_density)[2]);
+
     double get_mass_density(
             hpx::util::tuple<double &, double &, double &, double &, double &, double &, double &, double &, double &,
                     CELL_TYPES> &t);
+
+    double get_mass_density(double (&cell_pop)[9]);
 
     void get_momentum_density(size_t x, size_t y, double (&momentum_density)[2]);
 
