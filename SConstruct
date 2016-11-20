@@ -11,9 +11,9 @@ vars.Add("CXX", "C++ compiler", 'g++')
 env_release = Environment(variables=vars, ENV=os.environ)
 env_release.AppendUnique(CPPFLAGS=['-fopenmp', '-Wall', '-Wno-ignored-attributes', '-Wno-unused-local-typedefs'])
 env_release.AppendUnique(LINKFLAGS=['-fopenmp'])
-env_release.AppendUnique(CPPPATH=[env_release["VC_INCLUDE_PATH"]])
-env_release.AppendUnique(LIBPATH=[env_release["VC_LIBRARY_PATH"]])
-env_release.AppendUnique(LIBS=['Vc'])
+# env_release.AppendUnique(CPPPATH=[env_release["VC_INCLUDE_PATH"]])
+# env_release.AppendUnique(LIBPATH=[env_release["VC_LIBRARY_PATH"]])
+# env_release.AppendUnique(LIBS=['Vc'])
 
 
 env_debug = env_release.Clone()
