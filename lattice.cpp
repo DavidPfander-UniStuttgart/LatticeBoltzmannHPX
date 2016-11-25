@@ -84,6 +84,8 @@ int hpx_main(boost::program_options::variables_map& vm) {
     if (write_result) {
       grid.serialize_as_csv("result.csv");
     }
+  } else {
+    std::cerr << "algorithm selected is not valid: " << algorithm << std::endl;
   }
 
   return hpx::finalize(); // Handles HPX shutdown

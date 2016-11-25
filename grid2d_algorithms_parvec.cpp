@@ -154,11 +154,12 @@ grid2d_algorithms_parvec::grid2d_algorithms_parvec(size_t x_size, size_t y_size,
 
     for (size_t x = 0; x < x_size; x++) {
         for (size_t y = 0; y < y_size; y++) {
-            if (get_cell(x, y) == CELL_TYPES::WATER || get_cell(x, y) == CELL_TYPES::DRAIN
-                    || get_cell(x, y) == CELL_TYPES::BORDER) {
-                get_population(x, y, 4) = 0.1;
-                get_new_population(x, y, 4) = 0.1;
-            } else if (get_cell(x, y) == CELL_TYPES::SOURCE) {
+//            if (get_cell(x, y) == CELL_TYPES::WATER || get_cell(x, y) == CELL_TYPES::DRAIN
+//                    || get_cell(x, y) == CELL_TYPES::BORDER) {
+//                get_population(x, y, 4) = 0.1;
+//                get_new_population(x, y, 4) = 0.1;
+//            } else
+            if (get_cell(x, y) == CELL_TYPES::SOURCE) {
                 initialize_cell(x, y, 0.5);
             }
         }
@@ -217,77 +218,92 @@ void grid2d_algorithms_parvec::collide() {
             boost::end((*populations)[5]), boost::end((*populations)[6]), boost::end((*populations)[7]),
             boost::end((*populations)[8]));
 
-    //  Vc::double_v d = 0.0;
-    ////  hpx::util::tuple<Vc::double_v> tuple_test = hpx::util::make_tuple(d);
-    //
-    //  fp(d);
+    hpx::parallel::for_each(hpx::parallel::datapar_execution, zip_it_begin, zip_it_end, [this](auto &t) -> void {
 
-//  auto fp = hpx::util::bind(&grid2d_algorithms_parvec::collide_cells, this,
-//      hpx::util::placeholders::_1);
+        using comp_type = typename hpx::util::tuple_element<0, typename hpx::util::decay<decltype(t)>::type>::type;
+        // remove reference
+	using var_type = typename hpx::util::decay<comp_type>::type;
 
-//  hpx::parallel::for_each(hpx::parallel::datapar_execution, zip_it_begin, zip_it_end, fp);
-//  hpx::parallel::for_each(hpx::parallel::datapar_execution,
-//      boost::begin((*populations)[0]), boost::end((*populations)[0]), [this](auto &t){
-//        using var_type = typename hpx::util::decay<decltype(t)>::type;
-//        var_type v;
-//  });
+	var_type mass_density = this->get_mass_density(t);
 
-    hpx::parallel::for_each(hpx::parallel::datapar_execution, zip_it_begin, zip_it_end, [this](auto t) {
+	var_type zero = 0.0;
 
-        using comp_type = typename hpx::util::tuple_element<0, decltype(t)>::type;
-        using var_type = typename hpx::util::decay<comp_type>::type;
+	// if (Vc::any_of(mass_density > zero)) {
+	//     hpx::cout << "mass_density: " << mass_density << std::endl << hpx::flush;
+	// }
 
-        var_type mass_density = this->get_mass_density(t);
+	var_type momentum_density[2];
+	this->get_momentum_density(t, momentum_density);
 
-        var_type momentum_density[2];
-        get_momentum_density(cell_pop, momentum_density);
-        Vc::double_v u[2] = {momentum_density[0] / mass_density, momentum_density[1]
-            / mass_density};
+	var_type u[2];
+	u[0](mass_density > zero) = momentum_density[0] / mass_density;
+	u[1](mass_density > zero) = momentum_density[1] / mass_density;
 
-//            Vc::double_v momentum_density[2];
-//            get_momentum_density(cell_pop, momentum_density);
-//            Vc::double_v u[2] = {momentum_density[0] / mass_density, momentum_density[1]
-//                / mass_density};
-//
-//            //TODO: cannot do this without a "tuple_view"
-//            hpx::util::get<0>(t) = std::max(0.0,
-//                    (1 - grid2d_algorithms_parvec::OMEGA) * hpx::util::get<0>(t)
-//                    + grid2d_algorithms_parvec::OMEGA
-//                    * calculate_equilibrium(0, mass_density, u));
-//            hpx::util::get<1>(t) = std::max(0.0,
-//                    (1 - grid2d_algorithms_parvec::OMEGA) * hpx::util::get<1>(t)
-//                    + grid2d_algorithms_parvec::OMEGA
-//                    * calculate_equilibrium(1, mass_density, u));
-//            hpx::util::get<2>(t) = std::max(0.0,
-//                    (1 - grid2d_algorithms_parvec::OMEGA) * hpx::util::get<2>(t)
-//                    + grid2d_algorithms_parvec::OMEGA
-//                    * calculate_equilibrium(2, mass_density, u));
-//            hpx::util::get<3>(t) = std::max(0.0,
-//                    (1 - grid2d_algorithms_parvec::OMEGA) * hpx::util::get<3>(t)
-//                    + grid2d_algorithms_parvec::OMEGA
-//                    * calculate_equilibrium(3, mass_density, u));
-//            hpx::util::get<4>(t) = std::max(0.0,
-//                    (1 - grid2d_algorithms_parvec::OMEGA) * hpx::util::get<4>(t)
-//                    + grid2d_algorithms_parvec::OMEGA
-//                    * calculate_equilibrium(4, mass_density, u));
-//            hpx::util::get<5>(t) = std::max(0.0,
-//                    (1 - grid2d_algorithms_parvec::OMEGA) * hpx::util::get<5>(t)
-//                    + grid2d_algorithms_parvec::OMEGA
-//                    * calculate_equilibrium(5, mass_density, u));
-//            hpx::util::get<6>(t) = std::max(0.0,
-//                    (1 - grid2d_algorithms_parvec::OMEGA) * hpx::util::get<6>(t)
-//                    + grid2d_algorithms_parvec::OMEGA
-//                    * calculate_equilibrium(6, mass_density, u));
-//            hpx::util::get<7>(t) = std::max(0.0,
-//                    (1 - grid2d_algorithms_parvec::OMEGA) * hpx::util::get<7>(t)
-//                    + grid2d_algorithms_parvec::OMEGA
-//                    * calculate_equilibrium(7, mass_density, u));
-//            hpx::util::get<8>(t) = std::max(0.0,
-//                    (1 - grid2d_algorithms_parvec::OMEGA) * hpx::util::get<8>(t)
-//                    + grid2d_algorithms_parvec::OMEGA
-//                    * calculate_equilibrium(8, mass_density, u));
+//            typename var_type::mask_type mask = mass_density > zero;
 
-        });
+	// if (mass_density > 0.0) {
+	//   u[0] = Vc::iif(mask, momentum_density[0] / mass_density, 0.0);
+	//   u[1] = Vc::iif(mask, momentum_density[1] / mass_density, 0.0);
+	// }
+
+//            hpx::cout << "momentum_density_x: " << momentum_density[0] << std::endl << hpx::flush;
+//            hpx::cout << "momentum_density_y: " << momentum_density[1] << std::endl << hpx::flush;
+//            hpx::cout << "u_x: " << u[0] << std::endl << hpx::flush;
+//            hpx::cout << "u_y: " << u[1] << std::endl << hpx::flush;
+
+//TODO: cannot do this without a "tuple_view"
+	hpx::util::get<0> (t) = std::max(0.0,
+					 (1 - grid2d_algorithms_parvec::OMEGA) * hpx::util::get<0>(t)
+					 + grid2d_algorithms_parvec::OMEGA * this->calculate_equilibrium(0, mass_density, u));
+	hpx::util::get<1>(t) = std::max(0.0,
+					(1 - grid2d_algorithms_parvec::OMEGA) * hpx::util::get<1>(t)
+					+ grid2d_algorithms_parvec::OMEGA * this->calculate_equilibrium(1, mass_density, u));
+	hpx::util::get<2>(t) = std::max(0.0,
+					(1 - grid2d_algorithms_parvec::OMEGA) * hpx::util::get<2>(t)
+					+ grid2d_algorithms_parvec::OMEGA * this->calculate_equilibrium(2, mass_density, u));
+	hpx::util::get<3>(t) = std::max(0.0,
+					(1 - grid2d_algorithms_parvec::OMEGA) * hpx::util::get<3>(t)
+					+ grid2d_algorithms_parvec::OMEGA * this->calculate_equilibrium(3, mass_density, u));
+	hpx::util::get<4>(t) = std::max(0.0,
+					(1 - grid2d_algorithms_parvec::OMEGA) * hpx::util::get<4>(t)
+					+ grid2d_algorithms_parvec::OMEGA * this->calculate_equilibrium(4, mass_density, u));
+	hpx::util::get<5>(t) = std::max(0.0,
+					(1 - grid2d_algorithms_parvec::OMEGA) * hpx::util::get<5>(t)
+					+ grid2d_algorithms_parvec::OMEGA * this->calculate_equilibrium(5, mass_density, u));
+	hpx::util::get<6>(t) = std::max(0.0,
+					(1 - grid2d_algorithms_parvec::OMEGA) * hpx::util::get<6>(t)
+					+ grid2d_algorithms_parvec::OMEGA * this->calculate_equilibrium(6, mass_density, u));
+	hpx::util::get<7>(t) = std::max(0.0,
+					(1 - grid2d_algorithms_parvec::OMEGA) * hpx::util::get<7>(t)
+					+ grid2d_algorithms_parvec::OMEGA * this->calculate_equilibrium(7, mass_density, u));
+	hpx::util::get<8>(t) = std::max(0.0,
+					(1 - grid2d_algorithms_parvec::OMEGA) * hpx::util::get<8>(t)
+					+ grid2d_algorithms_parvec::OMEGA * this->calculate_equilibrium(8, mass_density, u));
+
+	    // // careful, no momentum
+            // hpx::util::get<0>(t) = 70000.0;
+            // hpx::util::get<1>(t) = 70000.0;
+            // hpx::util::get<2>(t) = 70000.0;
+            // hpx::util::get<3>(t) = 70000.0;
+            // hpx::util::get<4>(t) = 70000.0;
+            // hpx::util::get<5>(t) = 70000.0;
+            // hpx::util::get<6>(t) = 70000.0;
+            // hpx::util::get<7>(t) = 70000.0;
+            // hpx::util::get<8>(t) = 70000.0;
+
+            // if (Vc::any_of(mass_density > zero)) {
+            //     hpx::cout << hpx::util::get<0>(t) << std::endl << hpx::flush;
+            //     hpx::cout << hpx::util::get<1>(t) << std::endl << hpx::flush;
+            //     hpx::cout << hpx::util::get<2>(t) << std::endl << hpx::flush;
+            //     hpx::cout << hpx::util::get<3>(t) << std::endl << hpx::flush;
+            //     hpx::cout << hpx::util::get<4>(t) << std::endl << hpx::flush;
+            //     hpx::cout << hpx::util::get<5>(t) << std::endl << hpx::flush;
+            //     hpx::cout << hpx::util::get<6>(t) << std::endl << hpx::flush;
+            //     hpx::cout << hpx::util::get<7>(t) << std::endl << hpx::flush;
+            //     hpx::cout << hpx::util::get<8>(t) << std::endl << hpx::flush;
+            // }
+
+        });    
 }
 
 void grid2d_algorithms_parvec::initialize_cell(size_t x, size_t y, double factor) {

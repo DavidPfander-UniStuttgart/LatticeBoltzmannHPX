@@ -88,12 +88,12 @@ private:
         return mass_density;
     }
 
-    template<typename T>
-    double calculate_equilibrium(const size_t dir, const T mass_density, const T (&u)[2]) {
-        T u2 = u[0] * u[0] + u[1] * u[1];
-        T vu = SPEEDS_X[dir] * u[0] + SPEEDS_Y[dir] * u[1];
-        return mass_density * weights[dir] * (1.0 + 3.0 * vu + 4.5 * vu * vu - 1.5 * u2);
-    }
+//    template<typename T>
+//    double calculate_equilibrium(const size_t dir, const T mass_density, const T (&u)[2]) {
+//        T u2 = u[0] * u[0] + u[1] * u[1];
+//        T vu = SPEEDS_X[dir] * u[0] + SPEEDS_Y[dir] * u[1];
+//        return mass_density * weights[dir] * (1.0 + 3.0 * vu + 4.5 * vu * vu - 1.5 * u2);
+//    }
 
     void initialize_cell(size_t x, size_t y, double factor);
 
@@ -121,6 +121,43 @@ private:
         mass_density += hpx::util::get<7>(t);
         mass_density += hpx::util::get<8>(t);
         return mass_density;
+    }
+
+    template<typename Tuple>
+    void get_momentum_density(Tuple &t,
+            typename hpx::util::decay<typename hpx::util::tuple_element<0, Tuple>::type>::type (&momentum_density)[2]) {
+
+        momentum_density[0] = 0.0;
+        momentum_density[1] = 0.0;
+
+        momentum_density[0] += hpx::util::get<0>(t) * grid2d_algorithms_parvec::SPEEDS_X[0];
+        momentum_density[0] += hpx::util::get<1>(t) * grid2d_algorithms_parvec::SPEEDS_X[1];
+        momentum_density[0] += hpx::util::get<2>(t) * grid2d_algorithms_parvec::SPEEDS_X[2];
+        momentum_density[0] += hpx::util::get<3>(t) * grid2d_algorithms_parvec::SPEEDS_X[3];
+        momentum_density[0] += hpx::util::get<4>(t) * grid2d_algorithms_parvec::SPEEDS_X[4];
+        momentum_density[0] += hpx::util::get<5>(t) * grid2d_algorithms_parvec::SPEEDS_X[5];
+        momentum_density[0] += hpx::util::get<6>(t) * grid2d_algorithms_parvec::SPEEDS_X[6];
+        momentum_density[0] += hpx::util::get<7>(t) * grid2d_algorithms_parvec::SPEEDS_X[7];
+        momentum_density[0] += hpx::util::get<8>(t) * grid2d_algorithms_parvec::SPEEDS_X[8];
+
+        momentum_density[1] += hpx::util::get<0>(t) * grid2d_algorithms_parvec::SPEEDS_Y[0];
+        momentum_density[1] += hpx::util::get<1>(t) * grid2d_algorithms_parvec::SPEEDS_Y[1];
+        momentum_density[1] += hpx::util::get<2>(t) * grid2d_algorithms_parvec::SPEEDS_Y[2];
+        momentum_density[1] += hpx::util::get<3>(t) * grid2d_algorithms_parvec::SPEEDS_Y[3];
+        momentum_density[1] += hpx::util::get<4>(t) * grid2d_algorithms_parvec::SPEEDS_Y[4];
+        momentum_density[1] += hpx::util::get<5>(t) * grid2d_algorithms_parvec::SPEEDS_Y[5];
+        momentum_density[1] += hpx::util::get<6>(t) * grid2d_algorithms_parvec::SPEEDS_Y[6];
+        momentum_density[1] += hpx::util::get<7>(t) * grid2d_algorithms_parvec::SPEEDS_Y[7];
+        momentum_density[1] += hpx::util::get<8>(t) * grid2d_algorithms_parvec::SPEEDS_Y[8];
+    }
+
+    template<typename var_type>
+    var_type calculate_equilibrium(const size_t dir,
+        const var_type mass_density, const var_type (&u)[2]) {
+      var_type u2 = u[0] * u[0] + u[1] * u[1];
+      var_type vu = SPEEDS_X[dir] * u[0] + SPEEDS_Y[dir] * u[1];
+      return mass_density * weights[dir]
+          * (1.0 + 3.0 * vu + 4.5 * vu * vu - 1.5 * u2);
     }
 
     void source();
